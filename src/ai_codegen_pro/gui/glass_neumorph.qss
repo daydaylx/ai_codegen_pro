@@ -1,0 +1,47 @@
+QWidget {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+        stop:0 #2A2D32, stop:1 #23272e);
+    color: #e2e6ed;
+    font-family: 'Fira Sans', 'Segoe UI', Arial, sans-serif;
+    font-size: 15px;
+}
+QFrame {
+    background: rgba(255,255,255,0.08);
+    border-radius: 16px;
+    border: 1.4px solid rgba(255,255,255,0.19);
+    box-shadow: 0px 8px 40px 8px #1116, 0 1.5px 2px 1px #fff3 inset;
+    padding: 10px;
+}
+QTextEdit, QPlainTextEdit, QLineEdit, QComboBox {
+    background: rgba(35,38,43,0.85);
+    color: #e2e6ed;
+    border-radius: 12px;
+    border: 1.2px solid #31344a;
+    padding: 7px 11px;
+    min-height: 28px;
+    font-size: 15px;
+    font-family: 'Fira Mono', monospace;
+}
+QPushButton {
+    background-color: rgba(70,80,110,0.45);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 7px 17px;
+    font-size: 15px;
+    margin: 5px 0;
+    font-weight: 600;
+    letter-spacing: .5px;
+    box-shadow: 0 2px 18px #181b1f45;
+}
+QPushButton:hover { background-color: rgba(70,80,150,0.6); }
+QPushButton:pressed { background-color: rgba(30,36,60,0.85);}
+QComboBox { min-width: 130px; }
+QLabel { font-weight: bold; color: #b3bad7; margin-top: 4px; font-size: 15px;}
+QFileDialog, QListWidget {
+    background: rgba(35,38,43,0.93);
+    color: #c8cce7;
+    border-radius: 12px;
+    border: 1.2px solid #31344a;
+    font-size: 14px;
+}

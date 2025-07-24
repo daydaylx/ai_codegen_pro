@@ -4,13 +4,13 @@ from PySide6.QtWidgets import (
     QListWidget, QListWidgetItem, QMessageBox, QTabBar, QCheckBox, QMenuBar,
     QAction, QInputDialog, QPlainTextEdit, QDialog, QDialogButtonBox
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QThread, Signal, Slot
 from pathlib import Path
 import os
+import sys
 
 from ai_codegen_pro.core.model_router import ModelRouter
 
-# Nur noch OpenRouter Modelle:
 MODEL_OPTIONS = [
     ("Mistral 7B", "openrouter", "mistral-7b"),
     ("Mixtral 8x7B", "openrouter", "mixtral-8x7b"),
@@ -20,63 +20,39 @@ MODEL_OPTIONS = [
 ]
 
 MODEL_INFO = {
-    "mistral-7b": {
-        "Provider": "OpenRouter",
-        "Preis": "kostenlos",
-        "Kontext": "32k",
-        "Features": "Sehr günstig, solide Antworten"
-    },
-    "mixtral-8x7b": {
-        "Provider": "OpenRouter",
-        "Preis": "kostenlos",
-        "Kontext": "64k",
-        "Features": "Sehr gute Allround-Qualität"
-    },
-    "qwen-72b": {
-        "Provider": "OpenRouter",
-        "Preis": "kostenlos",
-        "Kontext": "128k",
-        "Features": "Sehr großes Kontextfenster"
-    },
-    "phi-3-mini-128k-instruct": {
-        "Provider": "OpenRouter",
-        "Preis": "kostenlos",
-        "Kontext": "128k",
-        "Features": "Sehr effizient, kleiner Speicherbedarf"
-    },
-    "nous-hermes-2-mixtral-8x7b-dpo": {
-        "Provider": "OpenRouter",
-        "Preis": "kostenlos",
-        "Kontext": "64k",
-        "Features": "Spezialisiert für längere Kontexte"
-    },
+    "mistral-7b": {"Provider": "OpenRouter", "Preis": "kostenlos", "Kontext": "32k", "Features": "Sehr günstig, solide Antworten"},
+    "mixtral-8x7b": {"Provider": "OpenRouter", "Preis": "kostenlos", "Kontext": "64k", "Features": "Sehr gute Allround-Qualität"},
+    "qwen-72b": {"Provider": "OpenRouter", "Preis": "kostenlos", "Kontext": "128k", "Features": "Sehr großes Kontextfenster"},
+    "phi-3-mini-128k-instruct": {"Provider": "OpenRouter", "Preis": "kostenlos", "Kontext": "128k", "Features": "Sehr effizient, kleiner Speicherbedarf"},
+    "nous-hermes-2-mixtral-8x7b-dpo": {"Provider": "OpenRouter", "Preis": "kostenlos", "Kontext": "64k", "Features": "Spezialisiert für längere Kontexte"},
 }
 
-DARK_QSS = """
-QWidget { background-color: #23272e; color: #e2e6ed; font-family: "Fira Sans", "Segoe UI", Arial, sans-serif; font-size: 14px;}
-QFrame { background: #23272e; border-radius: 11px; border: 1.1px solid #373b48; padding: 6px;}
-QTextEdit, QPlainTextEdit, QLineEdit, QComboBox { background-color: #191b1f; color: #e2e6ed; border-radius: 7px; border: 1px solid #353744; padding: 5px; min-height: 20px;}
-QPushButton { background-color: #323640; color: #f4f7fa; border: none; border-radius: 7px; padding: 5px 12px; min-width: 28px; font-size: 13px; margin: 3px 0; font-weight: bold;}
-QPushButton:hover { background-color: #444857;}
-QPushButton:pressed { background-color: #24262c;}
-QComboBox { padding: 4px 10px; min-width: 120px;}
-QLabel { font-weight: bold; color: #a9aeba; margin-top: 4px; margin-bottom: 1px; font-size: 13px;}
-QFileDialog { background-color: #23272e;}
-QListWidget { background: #23272e; border-radius: 8px; border: 1px solid #353744; color: #bbbbc4; font-size: 13px;}
-"""
-
-LIGHT_QSS = """
-QWidget { background-color: #f3f4fa; color: #2d3142; font-family: "Fira Sans", "Segoe UI", Arial, sans-serif; font-size: 14px;}
-QFrame { background: #fff; border-radius: 11px; border: 1.1px solid #d8dae8; padding: 6px;}
-QTextEdit, QPlainTextEdit, QLineEdit, QComboBox { background-color: #f9fafc; color: #23242a; border-radius: 7px; border: 1px solid #cfd1e0; padding: 5px; min-height: 20px;}
-QPushButton { background-color: #e8ebf7; color: #23242a; border: none; border-radius: 7px; padding: 5px 12px; min-width: 28px; font-size: 13px; margin: 3px 0; font-weight: bold;}
-QPushButton:hover { background-color: #dbe0ec;}
-QPushButton:pressed { background-color: #cfd5e2;}
-QComboBox { padding: 4px 10px; min-width: 120px;}
-QLabel { font-weight: bold; color: #585e6d; margin-top: 4px; margin-bottom: 1px; font-size: 13px;}
-QFileDialog { background-color: #f3f4fa;}
-QListWidget { background: #fff; border-radius: 8px; border: 1px solid #cfd1e0; color: #595e7a; font-size: 13px;}
-"""
+class StreamingThread(QThread):
+    chunk_signal = Signal(str)
+    error_signal = Signal(str)
+    finished_signal = Signal()
+    def __init__(self, model, prompt, systemprompt, api_key, api_base=None):
+        super().__init__()
+        self.model = model
+        self.prompt = prompt
+        self.systemprompt = systemprompt
+        self.api_key = api_key
+        self.api_base = api_base
+    def run(self):
+        try:
+            from ai_codegen_pro.core.providers.openrouter_client import OpenRouterClient
+            client = OpenRouterClient(
+                api_key=self.api_key,
+                api_base=self.api_base,
+                model=self.model
+            )
+            for chunk in client.generate_code_streaming(
+                prompt=self.prompt, systemprompt=self.systemprompt
+            ):
+                self.chunk_signal.emit(chunk)
+            self.finished_signal.emit()
+        except Exception as e:
+            self.error_signal.emit(str(e))
 
 class SettingsDialog(QDialog):
     def __init__(self, parent=None):
@@ -93,7 +69,6 @@ class SettingsDialog(QDialog):
         btns.accepted.connect(self.accept)
         btns.rejected.connect(self.reject)
         layout.addWidget(btns)
-
     def get_settings(self):
         return {
             "api_key": self.api_key_edit.toPlainText().strip(),
@@ -115,7 +90,6 @@ class SystemPromptWidget(QFrame):
         layout.addWidget(self.toggle_btn)
         self.collapsed = False
         self.toggle_btn.clicked.connect(self.toggle)
-
     def toggle(self):
         self.collapsed = not self.collapsed
         self.textedit.setVisible(not self.collapsed)
@@ -124,7 +98,6 @@ class SystemPromptWidget(QFrame):
             self.setFixedHeight(26)
         else:
             self.setFixedHeight(60)
-
     def get_prompt(self):
         return self.textedit.toPlainText().strip()
 
@@ -170,8 +143,8 @@ class SessionWidget(QWidget):
         prompt_card.setGraphicsEffect(shadow)
         layout.addWidget(prompt_card)
         # Generieren-Button
-        self.generate_btn = QPushButton("Generieren")
-        self.generate_btn.setMinimumWidth(90)
+        self.generate_btn = QPushButton("Live generieren")
+        self.generate_btn.setMinimumWidth(110)
         layout.addWidget(self.generate_btn)
         # Antwort Card mit Syntax-Highlighting (minimal)
         layout.addWidget(QLabel("Antwort:"))
@@ -203,6 +176,8 @@ class SessionWidget(QWidget):
         self.generate_btn.clicked.connect(self.on_generate)
         self.save_btn.clicked.connect(self.on_save)
         self.history_list.itemDoubleClicked.connect(self.on_history_select)
+        # Streaming
+        self.streaming_thread = None
     def show_model_info(self):
         current = self.modelbox.currentData()
         if not current:
@@ -226,20 +201,34 @@ class SessionWidget(QWidget):
         if not api_key:
             QMessageBox.critical(self, "API-Key fehlt", "API-Key nicht gesetzt! Bitte Umgebungsvariable setzen.")
             return
-        router = ModelRouter(
-            provider="openrouter",
-            api_key=api_key,
-            api_base=api_base,
-            model_name=model
+        self.result_output.setPlainText("… Anfrage läuft, Live-Stream …")
+        self.generate_btn.setEnabled(False)
+        self.result_output.setPlainText("")
+        self.streaming_thread = StreamingThread(
+            model=model, prompt=prompt, systemprompt=systemprompt,
+            api_key=api_key, api_base=api_base
         )
-        try:
-            self.result_output.setPlainText("... Anfrage läuft ...")
-            out = router.generate(prompt, systemprompt=systemprompt)
-            self.result_output.setPlainText(out)
-            entry = f"{prompt[:40]}... → {model}"
-            self.history_list.addItem(QListWidgetItem(entry))
-        except Exception as e:
-            self.result_output.setPlainText(f"Fehler: {e}")
+        self.streaming_thread.chunk_signal.connect(self.append_stream_chunk)
+        self.streaming_thread.error_signal.connect(self.stream_error)
+        self.streaming_thread.finished_signal.connect(self.stream_finished)
+        self.streaming_thread.start()
+    @Slot(str)
+    def append_stream_chunk(self, chunk):
+        self.result_output.moveCursor(self.result_output.textCursor().End)
+        self.result_output.insertPlainText(chunk)
+        self.result_output.moveCursor(self.result_output.textCursor().End)
+    @Slot()
+    def stream_finished(self):
+        self.generate_btn.setEnabled(True)
+        # Verlauf aktualisieren
+        prompt = self.prompt_input.toPlainText().strip()
+        model = self.modelbox.currentData()[2]
+        entry = f"{prompt[:40]}... → {model}"
+        self.history_list.addItem(QListWidgetItem(entry))
+    @Slot(str)
+    def stream_error(self, msg):
+        self.result_output.setPlainText(f"Fehler beim Streaming:\n{msg}")
+        self.generate_btn.setEnabled(True)
     def on_save(self):
         text = self.result_output.toPlainText()
         if not text.strip():
@@ -278,9 +267,15 @@ class MainWindow(QMainWindow):
         self.tabs.currentChanged.connect(self.check_add_tab)
         self.set_theme(dark=True)
     def set_theme(self, dark=True):
-        style = DARK_QSS if dark else LIGHT_QSS
+        style_path = Path(__file__).parent / "glass_neumorph.qss"
+        if style_path.exists():
+            with open(style_path, "r", encoding="utf-8") as f:
+                self.setStyleSheet(f.read())
+        else:
+            # Fallback QSS
+            style = "QWidget { background: #222; color: #eee; }"
+            self.setStyleSheet(style)
         self.theme_dark = dark
-        self.setStyleSheet(style)
     def show_settings(self):
         dlg = SettingsDialog(self)
         if dlg.exec():

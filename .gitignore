@@ -12,3 +12,6 @@ build/
 .DS_Store
 Thumbs.db
 logs/
+.venv/
+__pycache__/
+*.pyc
