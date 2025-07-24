@@ -4,6 +4,7 @@ from datetime import datetime
 from ai_codegen_pro.core.template_service import TemplateService
 from ai_codegen_pro.core.model_router import ModelRouter
 import json
+from pathlib import Path
 
 CONFIG_FILE = ".aicodegenrc"
 
@@ -28,62 +29,20 @@ def get_api_credentials(provider_opt, api_key_opt, api_base_opt):
         save_config(api_key, provider, api_base)
     return provider, api_key, api_base
 
+def smart_filename(prompt, step):
+    """Gibt einen sinnvollen Dateinamen je nach Inhalt/Step zurück."""
+    p = prompt.lower()
+    if "architektur" in p or "overview" in p or "struktur" in p:
+        return f"docs/architektur_step{step}.md"
+    if "test" in p:
+        return f"tests/test_step{step}.py"
+    if "template" in p or "modul" in p or "funktion" in p or "code" in p:
+        return f"src/generated_module_step{step}.py"
+    return f"output_step{step}.txt"
+
 @click.group()
 def cli():
     """ai_codegen_pro: KI-gestütztes Codegenerierungstool"""
-
-@cli.command()
-@click.option("--modulname", prompt="Modulname", help="Name des Moduls/Funktions.")
-@click.option("--funktion", prompt="Funktionsname", help="Name der zu generierenden Funktion.")
-@click.option("--doc", prompt="Funktionsbeschreibung", help="Beschreibung der Funktion.")
-def render_template(modulname, funktion, doc):
-    """Erstellt ein Python-Modul aus dem Template und gibt es aus."""
-    service = TemplateService()
-    code = service.render("python_module.j2", {
-        "module_docstring": modulname,
-        "function_name": funktion,
-        "function_args": "",
-        "function_docstring": doc,
-    })
-    click.echo(code)
-
-@cli.command()
-@click.option("--prompt", prompt="Prompt für die KI", help="Beschreibung der Funktion oder des Codes, den die KI generieren soll.")
-@click.option("--provider", default=None, help="KI-Anbieter: openai, openrouter, anthropic")
-@click.option("--model", default=None, help="Modellname (optional, z.B. gpt-4, mistral-7b, claude-3-haiku)")
-@click.option("--api-key", default=None, help="API-Key für das gewählte Modell (kann auch als Umgebungsvariable oder in .aicodegenrc gespeichert werden)")
-@click.option("--api-base", default=None, help="(Optional) Eigener API-Endpoint, z.B. für OpenRouter")
-@click.option("--out", default=None, help="Dateiname zum Speichern des KI-Outputs")
-@click.option("--format", type=click.Choice(['plain', 'markdown', 'py']), default='plain', show_default=True, help="Ausgabeformat (plain/markdown/py)")
-def generate_code(prompt, provider, model, api_key, api_base, out, format):
-    """Lässt die KI Code generieren und gibt das Ergebnis aus (und speichert es optional)."""
-    provider, api_key, api_base = get_api_credentials(provider, api_key, api_base)
-    router = ModelRouter(
-        provider=provider,
-        api_key=api_key,
-        api_base=api_base,
-        model_name=model
-    )
-    try:
-        code = router.generate(prompt)
-        # Formatieren
-        if format == "markdown":
-            out_str = f"```python\n{code}\n```"
-        elif format == "py":
-            out_str = code if code.strip().startswith("def ") or code.strip().startswith("class ") else f"# KI-Code\n{code}"
-        else:
-            out_str = code
-        click.echo(out_str)
-        # In Datei speichern, falls gewünscht
-        if out:
-            with open(out, "w", encoding="utf-8") as f:
-                f.write(out_str)
-            click.echo(f"\n[Gespeichert in {out}]")
-        # Verlauf anhängen
-        with open("history.log", "a", encoding="utf-8") as h:
-            h.write(f"\n--- {datetime.now().isoformat()} ---\nPrompt: {prompt}\nModel: {model}\nProvider: {provider}\nAPI: {api_base}\nOutput:\n{code}\n")
-    except Exception as e:
-        click.echo(f"Fehler bei der KI-Generierung: {e}")
 
 @cli.command()
 @click.option("--steps", prompt="Wie viele Chain-Schritte (z.B. 2 oder 3)?", type=int, default=2)
@@ -91,7 +50,7 @@ def generate_code(prompt, provider, model, api_key, api_base, out, format):
 @click.option("--model", default=None, help="Modellname (optional, für alle Steps gleich)")
 def prompt_chain(steps, first_prompt, model):
     """
-    Führt eine Prompt-Kette aus (z.B. zuerst Architektur, dann Code, dann Test) und zeigt das Ergebnis an.
+    Führt eine Prompt-Kette aus und speichert die Ergebnisse automatisch in passenden Dateien/Ordnern.
     """
     provider, api_key, api_base = get_api_credentials(None, None, None)
     router = ModelRouter(
@@ -107,6 +66,12 @@ def prompt_chain(steps, first_prompt, model):
         result = router.generate(current_prompt)
         click.echo(f"\n[Ergebnis]:\n{result}\n")
         chain_history.append({"step": i+1, "prompt": current_prompt, "output": result})
+        # Datei bestimmen und ggf. Ordner anlegen
+        fname = smart_filename(current_prompt, i+1)
+        Path(os.path.dirname(fname)).mkdir(parents=True, exist_ok=True)
+        with open(fname, "w", encoding="utf-8") as f:
+            f.write(result)
+        click.echo(f"→ [Gespeichert als {fname}]")
         if i < steps-1:
             current_prompt = click.prompt(f"Prompt für Schritt {i+2} (z.B. 'Schreibe daraus jetzt ein Python-Modul')", default=result)
     # Chain-History loggen
