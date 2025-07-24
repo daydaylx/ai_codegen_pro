@@ -3,6 +3,30 @@ import click
 from datetime import datetime
 from ai_codegen_pro.core.template_service import TemplateService
 from ai_codegen_pro.core.model_router import ModelRouter
+import json
+
+CONFIG_FILE = ".aicodegenrc"
+
+def save_config(api_key, provider, api_base):
+    config = {"api_key": api_key, "provider": provider, "api_base": api_base}
+    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+def load_config():
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+def get_api_credentials(provider_opt, api_key_opt, api_base_opt):
+    config = load_config()
+    api_key = api_key_opt or os.environ.get("AICODEGEN_API_KEY") or config.get("api_key")
+    provider = provider_opt or os.environ.get("AICODEGEN_PROVIDER") or config.get("provider") or "openai"
+    api_base = api_base_opt or os.environ.get("AICODEGEN_API_BASE") or config.get("api_base")
+    if not api_key:
+        api_key = click.prompt("Kein API-Key gefunden! Bitte gib deinen API-Key ein", hide_input=True)
+        save_config(api_key, provider, api_base)
+    return provider, api_key, api_base
 
 @click.group()
 def cli():
@@ -25,17 +49,15 @@ def render_template(modulname, funktion, doc):
 
 @cli.command()
 @click.option("--prompt", prompt="Prompt für die KI", help="Beschreibung der Funktion oder des Codes, den die KI generieren soll.")
-@click.option("--provider", default=lambda: os.environ.get("AICODEGEN_PROVIDER", "openai"), show_default="openai", help="KI-Anbieter: openai, openrouter, anthropic")
+@click.option("--provider", default=None, help="KI-Anbieter: openai, openrouter, anthropic")
 @click.option("--model", default=None, help="Modellname (optional, z.B. gpt-4, mistral-7b, claude-3-haiku)")
-@click.option("--api-key", default=lambda: os.environ.get("AICODEGEN_API_KEY", ""), help="API-Key für das gewählte Modell (kann auch als Umgebungsvariable gesetzt werden)")
-@click.option("--api-base", default=lambda: os.environ.get("AICODEGEN_API_BASE", None), help="(Optional) Eigener API-Endpoint, z.B. für OpenRouter")
+@click.option("--api-key", default=None, help="API-Key für das gewählte Modell (kann auch als Umgebungsvariable oder in .aicodegenrc gespeichert werden)")
+@click.option("--api-base", default=None, help="(Optional) Eigener API-Endpoint, z.B. für OpenRouter")
 @click.option("--out", default=None, help="Dateiname zum Speichern des KI-Outputs")
 @click.option("--format", type=click.Choice(['plain', 'markdown', 'py']), default='plain', show_default=True, help="Ausgabeformat (plain/markdown/py)")
 def generate_code(prompt, provider, model, api_key, api_base, out, format):
     """Lässt die KI Code generieren und gibt das Ergebnis aus (und speichert es optional)."""
-    if not api_key:
-        click.echo("FEHLER: Kein API-Key angegeben! Bitte Option --api-key oder Umgebungsvariable AICODEGEN_API_KEY setzen.")
-        return
+    provider, api_key, api_base = get_api_credentials(provider, api_key, api_base)
     router = ModelRouter(
         provider=provider,
         api_key=api_key,
@@ -62,6 +84,24 @@ def generate_code(prompt, provider, model, api_key, api_base, out, format):
             h.write(f"\n--- {datetime.now().isoformat()} ---\nPrompt: {prompt}\nModel: {model}\nProvider: {provider}\nAPI: {api_base}\nOutput:\n{code}\n")
     except Exception as e:
         click.echo(f"Fehler bei der KI-Generierung: {e}")
+
+@cli.command()
+@click.option("--lines", default=10, help="Wie viele letzte Einträge anzeigen?")
+def history(lines):
+    """Zeigt die letzten Prompts & Outputs aus history.log."""
+    if not os.path.exists("history.log"):
+        click.echo("Noch keine History vorhanden.")
+        return
+    with open("history.log", "r", encoding="utf-8") as f:
+        lines_content = f.readlines()[-lines:]
+    click.echo("".join(lines_content))
+
+@cli.command()
+@click.argument("file")
+def open_in_editor(file):
+    """Öffnet eine Datei im Standard-Editor (z.B. VSCode, nano)."""
+    editor = os.environ.get("EDITOR", "nano")
+    os.system(f"{editor} {file}")
 
 @cli.command()
 def hello():
