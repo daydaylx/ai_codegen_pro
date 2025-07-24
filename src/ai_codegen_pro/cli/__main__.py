@@ -1,5 +1,6 @@
 import os
 import click
+from datetime import datetime
 from ai_codegen_pro.core.template_service import TemplateService
 from ai_codegen_pro.core.model_router import ModelRouter
 
@@ -28,8 +29,10 @@ def render_template(modulname, funktion, doc):
 @click.option("--model", default=None, help="Modellname (optional, z.B. gpt-4, mistral-7b, claude-3-haiku)")
 @click.option("--api-key", default=lambda: os.environ.get("AICODEGEN_API_KEY", ""), help="API-Key für das gewählte Modell (kann auch als Umgebungsvariable gesetzt werden)")
 @click.option("--api-base", default=lambda: os.environ.get("AICODEGEN_API_BASE", None), help="(Optional) Eigener API-Endpoint, z.B. für OpenRouter")
-def generate_code(prompt, provider, model, api_key, api_base):
-    """Lässt die KI Code generieren und gibt das Ergebnis aus."""
+@click.option("--out", default=None, help="Dateiname zum Speichern des KI-Outputs")
+@click.option("--format", type=click.Choice(['plain', 'markdown', 'py']), default='plain', show_default=True, help="Ausgabeformat (plain/markdown/py)")
+def generate_code(prompt, provider, model, api_key, api_base, out, format):
+    """Lässt die KI Code generieren und gibt das Ergebnis aus (und speichert es optional)."""
     if not api_key:
         click.echo("FEHLER: Kein API-Key angegeben! Bitte Option --api-key oder Umgebungsvariable AICODEGEN_API_KEY setzen.")
         return
@@ -41,7 +44,22 @@ def generate_code(prompt, provider, model, api_key, api_base):
     )
     try:
         code = router.generate(prompt)
-        click.echo(code)
+        # Formatieren
+        if format == "markdown":
+            out_str = f"```python\n{code}\n```"
+        elif format == "py":
+            out_str = code if code.strip().startswith("def ") or code.strip().startswith("class ") else f"# KI-Code\n{code}"
+        else:
+            out_str = code
+        click.echo(out_str)
+        # In Datei speichern, falls gewünscht
+        if out:
+            with open(out, "w", encoding="utf-8") as f:
+                f.write(out_str)
+            click.echo(f"\n[Gespeichert in {out}]")
+        # Verlauf anhängen
+        with open("history.log", "a", encoding="utf-8") as h:
+            h.write(f"\n--- {datetime.now().isoformat()} ---\nPrompt: {prompt}\nModel: {model}\nProvider: {provider}\nAPI: {api_base}\nOutput:\n{code}\n")
     except Exception as e:
         click.echo(f"Fehler bei der KI-Generierung: {e}")
 
