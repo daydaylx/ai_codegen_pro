@@ -15,7 +15,7 @@ class ModelRouter:
         if self.provider == "openai":
             openai.api_key = self.api_key
             if self.api_base:
-                openai.api_base = self.api_base
+                openai.base_url = self.api_base  # openai>=1.x.x
         elif self.provider == "anthropic":
             anthropic.api_key = self.api_key
 
@@ -24,7 +24,9 @@ class ModelRouter:
         Führt eine Textgenerierung beim ausgewählten Provider aus.
         """
         if self.provider == "openai":
-            response = openai.ChatCompletion.create(
+            # openai>=1.0.0, OpenRouter funktioniert identisch!
+            client = openai.OpenAI(api_key=self.api_key, base_url=self.api_base) if self.api_base else openai.OpenAI(api_key=self.api_key)
+            response = client.chat.completions.create(
                 model=self.model_name or "gpt-3.5-turbo",
                 messages=[{"role": "user", "content": prompt}],
                 **kwargs
