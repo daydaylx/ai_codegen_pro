@@ -86,6 +86,34 @@ def generate_code(prompt, provider, model, api_key, api_base, out, format):
         click.echo(f"Fehler bei der KI-Generierung: {e}")
 
 @cli.command()
+@click.option("--steps", prompt="Wie viele Chain-Schritte (z.B. 2 oder 3)?", type=int, default=2)
+@click.option("--first-prompt", prompt="Startprompt (z.B. Architekturvorschlag für Modul XY)", help="Der erste Prompt der Kette.")
+@click.option("--model", default=None, help="Modellname (optional, für alle Steps gleich)")
+def prompt_chain(steps, first_prompt, model):
+    """
+    Führt eine Prompt-Kette aus (z.B. zuerst Architektur, dann Code, dann Test) und zeigt das Ergebnis an.
+    """
+    provider, api_key, api_base = get_api_credentials(None, None, None)
+    router = ModelRouter(
+        provider=provider,
+        api_key=api_key,
+        api_base=api_base,
+        model_name=model
+    )
+    current_prompt = first_prompt
+    chain_history = []
+    for i in range(steps):
+        click.echo(f"\n--- Schritt {i+1} ---")
+        result = router.generate(current_prompt)
+        click.echo(f"\n[Ergebnis]:\n{result}\n")
+        chain_history.append({"step": i+1, "prompt": current_prompt, "output": result})
+        if i < steps-1:
+            current_prompt = click.prompt(f"Prompt für Schritt {i+2} (z.B. 'Schreibe daraus jetzt ein Python-Modul')", default=result)
+    # Chain-History loggen
+    with open("chain_history.log", "a", encoding="utf-8") as ch:
+        ch.write(json.dumps(chain_history, indent=2, ensure_ascii=False) + "\n")
+
+@cli.command()
 @click.option("--lines", default=10, help="Wie viele letzte Einträge anzeigen?")
 def history(lines):
     """Zeigt die letzten Prompts & Outputs aus history.log."""
