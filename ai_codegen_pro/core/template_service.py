@@ -1,4 +1,4 @@
-import logging
+from ai_codegen_pro.utils.logger_service import log
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound, TemplateError
 from pathlib import Path
 
@@ -30,13 +30,13 @@ class TemplateService:
             template = self.env.get_template(template_name)
             return template.render(**context)
         except TemplateNotFound:
-            logging.error(f"Template '{template_name}' nicht gefunden im Ordner '{self.template_dir}'")
+            log.error(f"Template '{template_name}' nicht gefunden im Ordner '{self.template_dir}'")
             raise FileNotFoundError(f"Template '{template_name}' nicht gefunden!")
         except TemplateError as e:
-            logging.error(f"Template-Fehler: {e}")
+            log.error(f"Template-Fehler: {e}")
             raise
         except Exception as e:
-            logging.error(f"Unbekannter Fehler beim Rendern: {e}")
+            log.error(f"Unbekannter Fehler beim Rendern: {e}")
             raise
 
     def list_templates(self):

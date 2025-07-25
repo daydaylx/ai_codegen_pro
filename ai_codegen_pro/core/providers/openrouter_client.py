@@ -1,6 +1,6 @@
 import requests
 import json
-import logging
+from ai_codegen_pro.utils.logger_service import log
 from requests.exceptions import RequestException, Timeout, ConnectionError
 
 class OpenRouterClient:
@@ -13,7 +13,7 @@ class OpenRouterClient:
             "HTTP-Referer": "http://localhost",
             "X-Title": "ai_codegen_pro"
         }
-        self.logger = logging.getLogger("openrouter")
+        self.logger = log.getLogger("openrouter")
 
     def get_available_models(self):
         try:
