@@ -1,31 +1,54 @@
 from PySide6.QtWidgets import (
     QMainWindow, QTabWidget, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTextEdit,
-    QPushButton, QComboBox, QFileDialog, QFrame, QGraphicsDropShadowEffect,
+    QPushButton, QComboBox, QFileDialog, QFrame,
     QListWidget, QListWidgetItem, QMessageBox, QTabBar, QCheckBox, QMenuBar,
-    QAction, QInputDialog, QPlainTextEdit, QDialog, QDialogButtonBox
+    QInputDialog, QPlainTextEdit, QDialog, QDialogButtonBox
 )
+from PySide6.QtGui import QAction, QTextCursor
 from PySide6.QtCore import Qt, QThread, Signal, Slot
 from pathlib import Path
 import os
 import sys
+import json
 
-from ai_codegen_pro.core.model_router import ModelRouter
+from ai_codegen_pro.core.providers.openrouter_client import OpenRouterClient
 
-MODEL_OPTIONS = [
-    ("Mistral 7B", "openrouter", "mistral-7b"),
-    ("Mixtral 8x7B", "openrouter", "mixtral-8x7b"),
-    ("Qwen 72B", "openrouter", "qwen-72b"),
-    ("Phi-3", "openrouter", "phi-3-mini-128k-instruct"),
-    ("Nous Hermes 2", "openrouter", "nous-hermes-2-mixtral-8x7b-dpo"),
-]
+CONFIG_PATH = Path.home() / ".ai_codegen_pro_config.json"
 
-MODEL_INFO = {
-    "mistral-7b": {"Provider": "OpenRouter", "Preis": "kostenlos", "Kontext": "32k", "Features": "Sehr günstig, solide Antworten"},
-    "mixtral-8x7b": {"Provider": "OpenRouter", "Preis": "kostenlos", "Kontext": "64k", "Features": "Sehr gute Allround-Qualität"},
-    "qwen-72b": {"Provider": "OpenRouter", "Preis": "kostenlos", "Kontext": "128k", "Features": "Sehr großes Kontextfenster"},
-    "phi-3-mini-128k-instruct": {"Provider": "OpenRouter", "Preis": "kostenlos", "Kontext": "128k", "Features": "Sehr effizient, kleiner Speicherbedarf"},
-    "nous-hermes-2-mixtral-8x7b-dpo": {"Provider": "OpenRouter", "Preis": "kostenlos", "Kontext": "64k", "Features": "Spezialisiert für längere Kontexte"},
-}
+def save_settings(settings):
+    try:
+        with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+            json.dump(settings, f, indent=2)
+    except Exception as e:
+        print(f"Fehler beim Speichern der Einstellungen: {e}")
+
+def load_settings():
+    if CONFIG_PATH.exists():
+        try:
+            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Fehler beim Laden der Einstellungen: {e}")
+    return {}
+
+class ModelFetchThread(QThread):
+    models_fetched_signal = Signal(list)
+    error_signal = Signal(str)
+
+    def __init__(self, api_key, api_base=None):
+        super().__init__()
+        self.api_key = api_key
+        self.api_base = api_base
+
+    def run(self):
+        try:
+            if not self.api_key:
+                raise ValueError("API-Key nicht gefunden.")
+            client = OpenRouterClient(api_key=self.api_key, api_base=self.api_base)
+            models = client.get_available_models()
+            self.models_fetched_signal.emit(models)
+        except Exception as e:
+            self.error_signal.emit(str(e))
 
 class StreamingThread(QThread):
     chunk_signal = Signal(str)
@@ -40,11 +63,8 @@ class StreamingThread(QThread):
         self.api_base = api_base
     def run(self):
         try:
-            from ai_codegen_pro.core.providers.openrouter_client import OpenRouterClient
             client = OpenRouterClient(
-                api_key=self.api_key,
-                api_base=self.api_base,
-                model=self.model
+                api_key=self.api_key, api_base=self.api_base, model=self.model
             )
             for chunk in client.generate_code_streaming(
                 prompt=self.prompt, systemprompt=self.systemprompt
@@ -55,31 +75,27 @@ class StreamingThread(QThread):
             self.error_signal.emit(str(e))
 
 class SettingsDialog(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, current_settings, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Einstellungen")
         layout = QVBoxLayout(self)
         self.api_key_edit = QTextEdit()
         self.api_key_edit.setPlaceholderText("API-Key für OpenRouter …")
-        layout.addWidget(QLabel("API-Key (AICODEGEN_API_KEY):"))
+        self.api_key_edit.setText(current_settings.get("api_key", ""))
+        layout.addWidget(QLabel("API-Key (wird in ~/.ai_codegen_pro_config.json gespeichert):"))
         layout.addWidget(self.api_key_edit)
-        self.theme_switch = QCheckBox("Light Theme verwenden")
-        layout.addWidget(self.theme_switch)
+        
         btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         btns.accepted.connect(self.accept)
         btns.rejected.connect(self.reject)
         layout.addWidget(btns)
+
     def get_settings(self):
-        return {
-            "api_key": self.api_key_edit.toPlainText().strip(),
-            "light_theme": self.theme_switch.isChecked()
-        }
+        return { "api_key": self.api_key_edit.toPlainText().strip() }
 
 class SystemPromptWidget(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFrameShape(QFrame.Box)
-        self.setFrameShadow(QFrame.Plain)
         layout = QHBoxLayout(self)
         self.textedit = QTextEdit()
         self.textedit.setPlaceholderText("Systemprompt (Anweisungen für die KI, optional)…")
@@ -90,14 +106,14 @@ class SystemPromptWidget(QFrame):
         layout.addWidget(self.toggle_btn)
         self.collapsed = False
         self.toggle_btn.clicked.connect(self.toggle)
+        self.setMinimumHeight(60)
+
     def toggle(self):
         self.collapsed = not self.collapsed
         self.textedit.setVisible(not self.collapsed)
         self.toggle_btn.setText("▼" if self.collapsed else "▲")
-        if self.collapsed:
-            self.setFixedHeight(26)
-        else:
-            self.setFixedHeight(60)
+        self.setFixedHeight(26) if self.collapsed else self.setMinimumHeight(60)
+
     def get_prompt(self):
         return self.textedit.toPlainText().strip()
 
@@ -105,209 +121,219 @@ class SessionWidget(QWidget):
     def __init__(self, session_id=None):
         super().__init__()
         self.session_id = session_id
+        self.all_models = []
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10,8,10,8)
         layout.setSpacing(8)
-        # Modellwahl + Info
+        
         hlayout = QHBoxLayout()
         hlayout.addWidget(QLabel("Modell:"))
         self.modelbox = QComboBox()
-        for name, provider, model in MODEL_OPTIONS:
-            self.modelbox.addItem(name, (provider, model))
         self.modelbox.setMinimumWidth(120)
         hlayout.addWidget(self.modelbox)
-        self.info_btn = QPushButton("🛈")
-        self.info_btn.setFixedSize(28, 28)
-        self.info_btn.setToolTip("Details zum gewählten Modell anzeigen")
-        hlayout.addWidget(self.info_btn)
+        
+        self.refresh_btn = QPushButton("🔄")
+        self.refresh_btn.setFixedSize(28, 28)
+        self.refresh_btn.setToolTip("Modell-Liste neu laden")
+        hlayout.addWidget(self.refresh_btn)
         hlayout.addStretch()
-        layout.addLayout(hlayout)
-        self.info_btn.clicked.connect(self.show_model_info)
-        # Systemprompt (collapsible)
+        layout.addLayout(hlayout, 0)
+        
         self.sys_prompt = SystemPromptWidget(self)
-        layout.addWidget(self.sys_prompt)
-        # Prompt-Card
-        layout.addWidget(QLabel("Prompt:"))
+        layout.addWidget(self.sys_prompt, 0)
+
+        layout.addWidget(QLabel("Prompt:"), 0)
         prompt_card = QFrame()
-        prompt_card.setMinimumHeight(48)
         prompt_layout = QVBoxLayout(prompt_card)
-        prompt_layout.setContentsMargins(7,4,7,4)
+        prompt_layout.setContentsMargins(0,0,0,0)
         self.prompt_input = QTextEdit()
         self.prompt_input.setPlaceholderText("Beschreibe, was generiert werden soll ...")
-        self.prompt_input.setMinimumHeight(22)
         prompt_layout.addWidget(self.prompt_input)
-        shadow = QGraphicsDropShadowEffect(self)
-        shadow.setBlurRadius(13)
-        shadow.setOffset(0, 1)
-        shadow.setColor(Qt.gray)
-        prompt_card.setGraphicsEffect(shadow)
-        layout.addWidget(prompt_card)
-        # Generieren-Button
+        layout.addWidget(prompt_card, 2)
+
         self.generate_btn = QPushButton("Live generieren")
-        self.generate_btn.setMinimumWidth(110)
-        layout.addWidget(self.generate_btn)
-        # Antwort Card mit Syntax-Highlighting (minimal)
-        layout.addWidget(QLabel("Antwort:"))
+        layout.addWidget(self.generate_btn, 0)
+        
+        layout.addWidget(QLabel("Antwort:"), 0)
         result_card = QFrame()
-        result_card.setMinimumHeight(60)
         result_layout = QVBoxLayout(result_card)
-        result_layout.setContentsMargins(7,4,7,4)
+        result_layout.setContentsMargins(0,0,0,0)
         self.result_output = QPlainTextEdit()
         self.result_output.setReadOnly(True)
         self.result_output.setPlaceholderText("Hier erscheint das KI-Ergebnis ...")
-        self.result_output.setMinimumHeight(25)
         result_layout.addWidget(self.result_output)
-        shadow2 = QGraphicsDropShadowEffect(self)
-        shadow2.setBlurRadius(13)
-        shadow2.setOffset(0, 1)
-        shadow2.setColor(Qt.gray)
-        result_card.setGraphicsEffect(shadow2)
-        layout.addWidget(result_card)
-        # Verlauf/History
-        layout.addWidget(QLabel("Verlauf:"))
+        layout.addWidget(result_card, 5)
+        
+        layout.addWidget(QLabel("Verlauf:"), 0)
         self.history_list = QListWidget()
-        self.history_list.setMaximumHeight(80)
-        layout.addWidget(self.history_list)
-        # Save-Button
+        layout.addWidget(self.history_list, 1)
+        
         self.save_btn = QPushButton("In Datei speichern…")
-        self.save_btn.setMinimumWidth(90)
-        layout.addWidget(self.save_btn)
-        # Events
+        layout.addWidget(self.save_btn, 0)
+        
         self.generate_btn.clicked.connect(self.on_generate)
         self.save_btn.clicked.connect(self.on_save)
         self.history_list.itemDoubleClicked.connect(self.on_history_select)
-        # Streaming
+        self.refresh_btn.clicked.connect(self.fetch_models)
+        
+        self.model_fetch_thread = None
         self.streaming_thread = None
-    def show_model_info(self):
-        current = self.modelbox.currentData()
-        if not current:
+        self.fetch_models()
+
+    def fetch_models(self):
+        api_key = os.environ.get("AICODEGEN_API_KEY", "")
+        if not api_key:
+            self.modelbox.clear()
+            self.modelbox.addItem("API-Key fehlt!")
             return
-        _, model = current
-        info = MODEL_INFO.get(model, None)
-        if not info:
-            QMessageBox.information(self, "Modell-Info", f"Keine Details gefunden für Modell: {model}")
-            return
-        msg = "<br>".join([f"<b>{k}:</b> {v}" for k, v in info.items()])
-        QMessageBox.information(self, "Modell-Info", msg)
+
+        self.modelbox.clear()
+        self.modelbox.addItem("Lade Modelle...")
+        self.modelbox.setEnabled(False)
+        self.refresh_btn.setEnabled(False)
+
+        self.model_fetch_thread = ModelFetchThread(api_key=api_key)
+        self.model_fetch_thread.models_fetched_signal.connect(self.populate_model_box)
+        self.model_fetch_thread.error_signal.connect(self.on_model_fetch_error)
+        self.model_fetch_thread.start()
+
+    @Slot(list)
+    def populate_model_box(self, models):
+        self.all_models = sorted(models, key=lambda m: m.get('name', ''))
+        self.modelbox.clear()
+        for model in self.all_models:
+            self.modelbox.addItem(model.get('name', model['id']), model['id'])
+        self.modelbox.setEnabled(True)
+        self.refresh_btn.setEnabled(True)
+
+    @Slot(str)
+    def on_model_fetch_error(self, error_msg):
+        self.modelbox.clear()
+        self.modelbox.addItem("Fehler beim Laden")
+        self.modelbox.setEnabled(True)
+        self.refresh_btn.setEnabled(True)
+        QMessageBox.critical(self, "Fehler", f"Modelle konnten nicht geladen werden:\n{error_msg}")
+
     def on_generate(self):
         prompt = self.prompt_input.toPlainText().strip()
         systemprompt = self.sys_prompt.get_prompt()
-        if not prompt:
-            QMessageBox.warning(self, "Fehler", "Bitte Prompt eingeben!")
-            return
-        model = self.modelbox.currentData()[2]
+        if not prompt: return
+        model_id = self.modelbox.currentData()
+        if not model_id or "Lade" in self.modelbox.currentText(): return
         api_key = os.environ.get("AICODEGEN_API_KEY", "")
-        api_base = os.environ.get("AICODEGEN_API_BASE", None)
-        if not api_key:
-            QMessageBox.critical(self, "API-Key fehlt", "API-Key nicht gesetzt! Bitte Umgebungsvariable setzen.")
-            return
-        self.result_output.setPlainText("… Anfrage läuft, Live-Stream …")
+        if not api_key: return
+
         self.generate_btn.setEnabled(False)
         self.result_output.setPlainText("")
+        
         self.streaming_thread = StreamingThread(
-            model=model, prompt=prompt, systemprompt=systemprompt,
-            api_key=api_key, api_base=api_base
+            model=model_id, prompt=prompt, systemprompt=systemprompt, api_key=api_key
         )
         self.streaming_thread.chunk_signal.connect(self.append_stream_chunk)
         self.streaming_thread.error_signal.connect(self.stream_error)
         self.streaming_thread.finished_signal.connect(self.stream_finished)
         self.streaming_thread.start()
+
     @Slot(str)
     def append_stream_chunk(self, chunk):
-        self.result_output.moveCursor(self.result_output.textCursor().End)
+        self.result_output.moveCursor(QTextCursor.End)
         self.result_output.insertPlainText(chunk)
-        self.result_output.moveCursor(self.result_output.textCursor().End)
+        self.result_output.moveCursor(QTextCursor.End)
+
     @Slot()
     def stream_finished(self):
         self.generate_btn.setEnabled(True)
-        # Verlauf aktualisieren
         prompt = self.prompt_input.toPlainText().strip()
-        model = self.modelbox.currentData()[2]
+        model = self.modelbox.currentText()
         entry = f"{prompt[:40]}... → {model}"
         self.history_list.addItem(QListWidgetItem(entry))
+
     @Slot(str)
     def stream_error(self, msg):
         self.result_output.setPlainText(f"Fehler beim Streaming:\n{msg}")
         self.generate_btn.setEnabled(True)
+
     def on_save(self):
         text = self.result_output.toPlainText()
-        if not text.strip():
-            return
-        file, _ = QFileDialog.getSaveFileName(self, "Ergebnis speichern", "", "Text (*.txt);;Python (*.py);;Markdown (*.md);;Alle Dateien (*)")
+        if not text.strip(): return
+        file, _ = QFileDialog.getSaveFileName(self, "Ergebnis speichern", "", "Alle Dateien (*);;Python (*.py);;Markdown (*.md)")
         if file:
-            with open(file, "w", encoding="utf-8") as f:
-                f.write(text)
+            with open(file, "w", encoding="utf-8") as f: f.write(text)
+
     def on_history_select(self, item):
         self.prompt_input.setPlainText(item.text().split("... →")[0].strip())
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("ai_codegen_pro – KI Codegenerierung (OpenRouter-only)")
-        self.resize(950, 650)
+        self.setWindowTitle("ai_codegen_pro")
+        self.resize(950, 700)
         self.setMinimumSize(730, 520)
-        self.theme_dark = True
+        self.settings = load_settings()
+        if self.settings.get("api_key"):
+            os.environ["AICODEGEN_API_KEY"] = self.settings["api_key"]
+        
         self.menu = self.menuBar()
         self.settings_action = QAction("Einstellungen", self)
-        self.theme_action = QAction("Theme wechseln", self)
         self.menu.addAction(self.settings_action)
-        self.menu.addAction(self.theme_action)
-        self.settings_action.triggered.connect(self.show_settings)
-        self.theme_action.triggered.connect(self.toggle_theme)
+        
         self.tabs = QTabWidget()
         self.setCentralWidget(self.tabs)
         self.tabs.setTabsClosable(True)
         self.tabs.tabCloseRequested.connect(self.close_tab)
-        self.tabs.currentChanged.connect(self.on_tab_changed)
         self.tabs.tabBarDoubleClicked.connect(self.rename_tab)
+        
         self.session_count = 0
         self.add_session()
+        
         self.tabs.addTab(QWidget(), "+")
         self.tabs.tabBar().setTabButton(self.tabs.count() - 1, QTabBar.RightSide, None)
         self.tabs.currentChanged.connect(self.check_add_tab)
-        self.set_theme(dark=True)
-    def set_theme(self, dark=True):
-        style_path = Path(__file__).parent / "glass_neumorph.qss"
+        
+        self.settings_action.triggered.connect(self.show_settings)
+        self.set_theme()
+
+    def set_theme(self):
+        # Lädt das neue, moderne Theme
+        style_path = Path(__file__).parent / "modern_dark.qss"
         if style_path.exists():
             with open(style_path, "r", encoding="utf-8") as f:
                 self.setStyleSheet(f.read())
-        else:
-            # Fallback QSS
-            style = "QWidget { background: #222; color: #eee; }"
-            self.setStyleSheet(style)
-        self.theme_dark = dark
+
     def show_settings(self):
-        dlg = SettingsDialog(self)
+        dlg = SettingsDialog(self.settings, self)
         if dlg.exec():
-            settings = dlg.get_settings()
-            if settings.get("api_key"):
-                os.environ["AICODEGEN_API_KEY"] = settings["api_key"]
-            self.set_theme(not settings.get("light_theme", False))
-    def toggle_theme(self):
-        self.set_theme(not self.theme_dark)
+            new_settings = dlg.get_settings()
+            self.settings.update(new_settings)
+            save_settings(self.settings)
+            if self.settings.get("api_key"):
+                os.environ["AICODEGEN_API_KEY"] = self.settings["api_key"]
+                current_widget = self.tabs.currentWidget()
+                if isinstance(current_widget, SessionWidget):
+                    current_widget.fetch_models()
+
     def add_session(self):
         self.session_count += 1
         session = SessionWidget(session_id=self.session_count)
         idx = self.tabs.count() - 1
         self.tabs.insertTab(idx, session, f"Session {self.session_count}")
         self.tabs.setCurrentIndex(idx)
+
     def close_tab(self, index):
-        if self.tabs.widget(index):
+        if self.tabs.widget(index) and self.tabs.count() > 2:
             self.tabs.removeTab(index)
-            if self.tabs.count() == 1:
-                self.add_session()
+
     def check_add_tab(self, idx):
         if idx == self.tabs.count() - 1:
             self.add_session()
-    def on_tab_changed(self, idx):
-        pass
+
     def rename_tab(self, index):
-        if index == self.tabs.count() - 1:
-            return
-        current_name = self.tabs.tabText(index)
-        new_name, ok = QInputDialog.getText(self, "Tab umbenennen", "Neuer Name:", text=current_name)
-        if ok and new_name:
-            self.tabs.setTabText(index, new_name)
+        if index < self.tabs.count() - 1:
+            current_name = self.tabs.tabText(index)
+            new_name, ok = QInputDialog.getText(self, "Tab umbenennen", "Neuer Name:", text=current_name)
+            if ok and new_name:
+                self.tabs.setTabText(index, new_name)
+
 def start_gui():
     from PySide6.QtWidgets import QApplication
     import sys

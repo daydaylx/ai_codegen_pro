@@ -1,11 +1,12 @@
 import requests
+import json
 import time
 
 class OpenRouterClient:
     def __init__(self, api_key, api_base=None, model=None):
         self.api_key = api_key
         self.api_base = api_base or "https://openrouter.ai/api/v1"
-        self.model = model or "mistral-7b"
+        self.model = model
         self.headers = {
             "Authorization": f"Bearer {self.api_key}",
             "HTTP-Referer": "http://localhost",
@@ -16,16 +17,19 @@ class OpenRouterClient:
         url = f"{self.api_base}/models"
         r = requests.get(url, headers=self.headers, timeout=10)
         r.raise_for_status()
-        return r.json()
+        return r.json().get("data", [])
 
     def generate(self, prompt, systemprompt=None, max_tokens=2048, temperature=0.7):
         url = f"{self.api_base}/chat/completions"
+        
+        messages = []
+        if systemprompt:
+            messages.append({"role": "system", "content": systemprompt})
+        messages.append({"role": "user", "content": prompt})
+
         data = {
             "model": self.model,
-            "messages": [
-                {"role": "system", "content": systemprompt or ""},
-                {"role": "user", "content": prompt}
-            ],
+            "messages": messages,
             "max_tokens": max_tokens,
             "temperature": temperature,
             "stream": False
@@ -37,12 +41,15 @@ class OpenRouterClient:
 
     def generate_code_streaming(self, prompt, systemprompt=None, max_tokens=2048, temperature=0.7, chunk_size=40):
         url = f"{self.api_base}/chat/completions"
+        
+        messages = []
+        if systemprompt:
+            messages.append({"role": "system", "content": systemprompt})
+        messages.append({"role": "user", "content": prompt})
+
         data = {
             "model": self.model,
-            "messages": [
-                {"role": "system", "content": systemprompt or ""},
-                {"role": "user", "content": prompt}
-            ],
+            "messages": messages,
             "max_tokens": max_tokens,
             "temperature": temperature,
             "stream": True
@@ -57,13 +64,14 @@ class OpenRouterClient:
                 if payload.strip() == "[DONE]":
                     break
                 try:
-                    chunk = requests.utils.json.loads(payload)
+                    chunk = json.loads(payload)
                     delta = chunk["choices"][0]["delta"].get("content", "")
-                    buffer += delta
-                    if len(buffer) >= chunk_size:
-                        yield buffer
-                        buffer = ""
-                except Exception:
+                    if delta:
+                        buffer += delta
+                        if len(buffer) >= chunk_size:
+                            yield buffer
+                            buffer = ""
+                except (json.JSONDecodeError, KeyError):
                     continue
             if buffer:
                 yield buffer
