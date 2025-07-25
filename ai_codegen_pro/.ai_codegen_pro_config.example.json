@@ -1,0 +1,7 @@
+{
+  "api_key": "sk-xxx-your-openrouter-key",
+  "model": "mistral-7b",
+  "template_dir": "",
+  "last_used_prompt": "",
+  "theme": "dark"
+}

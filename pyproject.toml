@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ai_codegen_pro"
+version = "0.1.0"
+description = "Modularer KI-Codegenerator mit GUI, Template-System und OpenRouter-Anbindung"
+authors = [{ name = "Dein Name" }]
+requires-python = ">=3.8"
+dependencies = [
+    "PySide6>=6.2",
+    "jinja2>=3.0",
+    "requests>=2.26"
+]
+
+[tool.setuptools]
+packages = ["ai_codegen_pro", "ai_codegen_pro.core", "ai_codegen_pro.core.providers", "ai_codegen_pro.gui", "ai_codegen_pro.tests", "ai_codegen_pro.utils", "ai_codegen_pro.templates"]
+include-package-data = true

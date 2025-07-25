@@ -13,7 +13,7 @@ class OpenRouterClient:
             "HTTP-Referer": "http://localhost",
             "X-Title": "ai_codegen_pro"
         }
-        self.logger = log.getLogger("openrouter")
+        self.logger = log
 
     def get_available_models(self):
         try:
@@ -24,27 +24,6 @@ class OpenRouterClient:
         except (RequestException, Timeout, ConnectionError) as e:
             self.logger.error(f"Fehler beim Laden der Modelle: {e}")
             return []
-
-    def generate(self, prompt, systemprompt=None, max_tokens=2048, temperature=0.7):
-        try:
-            url = f"{self.api_base}/chat/completions"
-            messages = []
-            if systemprompt:
-                messages.append({"role": "system", "content": systemprompt})
-            messages.append({"role": "user", "content": prompt})
-            data = {
-                "model": self.model,
-                "messages": messages,
-                "max_tokens": max_tokens,
-                "temperature": temperature,
-                "stream": False
-            }
-            response = requests.post(url, headers=self.headers, json=data, timeout=40)
-            response.raise_for_status()
-            return response.json()["choices"][0]["message"]["content"]
-        except (RequestException, Timeout, ConnectionError) as e:
-            self.logger.error(f"Generierung fehlgeschlagen: {e}")
-            raise RuntimeError("Generierung fehlgeschlagen. Prüfe API-Key oder Verbindung.")
 
     def generate_code_streaming(self, prompt, systemprompt=None, max_tokens=2048, temperature=0.7, chunk_size=40):
         try:
@@ -84,3 +63,26 @@ class OpenRouterClient:
         except (RequestException, Timeout, ConnectionError) as e:
             self.logger.error(f"Streaming fehlgeschlagen: {e}")
             yield f"Fehler beim Streamen: {str(e)}"
+    def generate(self, prompt, systemprompt=None, max_tokens=2048, temperature=0.7):
+        try:
+            url = f"{self.api_base}/chat/completions"
+            messages = []
+            if systemprompt:
+                messages.append({"role": "system", "content": systemprompt})
+            messages.append({"role": "user", "content": prompt})
+            data = {
+                "model": self.model,
+                "messages": messages,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+                "stream": False
+            }
+            response = requests.post(url, headers=self.headers, json=data, timeout=40)
+            response.raise_for_status()
+            return response.json()["choices"][0]["message"]["content"]
+        except (RequestException, Timeout, ConnectionError) as e:
+            self.logger.error(f"Generierung fehlgeschlagen: {e}")
+            raise RuntimeError("Generierung fehlgeschlagen. Prüfe API-Key oder Verbindung.")
+        except Exception as e:
+            self.logger.error(f"Unbekannter Fehler: {e}")
+            raise RuntimeError("Generierung fehlgeschlagen (allgemeiner Fehler).")
