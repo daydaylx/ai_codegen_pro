@@ -1,0 +1,86 @@
+/* ai_codegen_pro - Professional Dark Theme for Tab-Layout */
+
+QWidget {
+    background-color: #1E1F22;
+    color: #F0F0F0;
+    font-family: "Segoe UI", "Cantarell", Arial, sans-serif;
+    font-size: 14px;
+    border: none;
+}
+
+QFrame {
+    background-color: #2B2D31;
+    border: 1px solid #3c3f46;
+    border-radius: 6px;
+}
+
+QTextEdit, QPlainTextEdit, QComboBox {
+    background-color: #2B2D31;
+    color: #F0F0F0;
+    border: 1px solid #3c3f46;
+    border-radius: 4px;
+    padding: 7px 9px;
+    font-family: "Fira Mono", "Courier New", monospace;
+}
+
+QTextEdit:focus, QPlainTextEdit:focus, QComboBox:focus {
+    border: 1px solid #00A693; /* Akzentfarbe */
+}
+
+QPushButton {
+    background-color: #3E444C;
+    color: #F0F0F0;
+    border: 1px solid #555555;
+    border-radius: 4px;
+    padding: 6px 16px;
+    font-weight: bold;
+}
+QPushButton:hover {
+    background-color: #4A5058;
+    border-color: #00A693;
+}
+QPushButton#generate_btn {
+    background-color: #00A693;
+    color: white;
+    border: none;
+}
+QPushButton#generate_btn:hover {
+    background-color: #00BFAB;
+}
+
+QTabBar::tab {
+    background-color: #2B2D31;
+    color: #a0a0a0;
+    padding: 8px 20px;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    border: 1px solid #3c3f46;
+    border-bottom: none;
+    margin-right: 2px;
+}
+QTabBar::tab:selected {
+    background-color: #1E1F22;
+    color: #FFFFFF;
+    border-color: #00A693;
+}
+QTabBar::tab:hover {
+    background-color: #3c3f46;
+}
+QTabWidget::pane {
+    border: 1px solid #3c3f46;
+    border-top: none;
+}
+QTabWidget::tab-bar {
+    left: 5px;
+}
+
+QLabel {
+    font-weight: bold;
+    color: #8A929B;
+    padding-left: 2px;
+}
+
+QMenuBar { background-color: #1E1F22; }
+QMenuBar::item:selected { background-color: #2B2D31; }
+QMenu { background-color: #2B2D31; border: 1px solid #3c3f46; }
+QMenu::item:selected { background-color: #00A693; }
