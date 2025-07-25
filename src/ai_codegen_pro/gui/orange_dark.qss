@@ -1,86 +1,83 @@
-/* ai_codegen_pro - Orange Dark Theme */
-
+/* Modern Orange Dark Theme */
 QWidget {
-    background-color: #2c2c2c;
+    background-color: #232323;
     color: #f0f0f0;
-    font-family: "Fira Sans", "Segoe UI", Arial, sans-serif;
+    font-family: 'Fira Sans', 'Segoe UI', Arial, sans-serif;
     font-size: 11pt;
     border: none;
 }
-
-QMainWindow, QDialog {
-    background-color: #2c2c2c;
-}
-
-QFrame#sidebar, QFrame#collapsible_panel {
-    background-color: #222222;
+QFrame#promptFrame {
+    background-color: #2a2a2a;
+    border: 1px solid #383838;
     border-radius: 8px;
 }
-
-QTextEdit, QPlainTextEdit, QComboBox, QSpinBox {
-    background-color: #3a3a3a;
-    color: #f5f5f5;
-    border: 1px solid #4a4a4a;
+QLabel#prompt_label {
+    color: #ff8c1a;
+    font-weight: bold;
+    font-size: 10pt;
+    padding-left: 4px;
+    margin-bottom: 2px;
+}
+QTextEdit, QPlainTextEdit {
+    background-color: #333;
+    color: #f8f8f8;
     border-radius: 6px;
+    border: 1px solid #444;
     padding: 8px;
-    font-family: "Fira Mono", monospace;
+    font-family: 'Fira Mono', 'Consolas', monospace;
+    font-size: 10.5pt;
 }
-
-QTextEdit:focus, QPlainTextEdit:focus, QComboBox:focus, QSpinBox:focus {
-    border: 1px solid #e67e22; /* Orange-Akzent */
+QTextEdit:focus, QPlainTextEdit:focus {
+    border: 1px solid #ff8c1a;
+    background-color: #363636;
 }
-
 QPushButton {
-    background-color: #4f4f4f;
-    color: #f0f0f0;
-    border: 1px solid #606060;
+    background-color: #383838;
+    color: #e0e0e0;
     border-radius: 6px;
-    padding: 8px 16px;
+    padding: 8px 18px;
+    border: 1px solid #555;
     font-weight: bold;
 }
-
 QPushButton:hover {
-    background-color: #5a5a5a;
-    border-color: #d35400;
+    background-color: #444;
+    border-color: #ff8c1a;
 }
-
 QPushButton:pressed {
-    background-color: #404040;
+    background-color: #2a2a2a;
 }
-
-/* Haupt-Aktionsbutton */
-QPushButton#generate_btn {
-    background-color: #d35400; /* Dunkelorange */
-    color: white;
+QPushButton#send_btn {
+    background-color: #d35400; /* Orange */
+    color: #ffffff;
     border: none;
-    padding: 10px;
-    font-size: 12pt;
+    min-height: 28px;
 }
-
-QPushButton#generate_btn:hover {
-    background-color: #e67e22; /* Hellorange */
+QPushButton#send_btn:hover {
+    background-color: #e67e22; /* Helleres Orange */
 }
-
-/* ToolButtons für Panels */
-QToolButton {
-    background-color: transparent;
-    border: none;
-    padding: 5px;
-    font-weight: bold;
-    color: #a0a0a0;
+QComboBox {
+    background-color: #383838;
+    color: #f0f0f0;
+    border-radius: 6px;
+    padding: 7px 10px;
+    border: 1px solid #555;
 }
-
-QToolButton:hover {
-    color: #e67e22;
+QComboBox:focus, QComboBox:hover {
+    border: 1px solid #ff8c1a;
 }
-
-QSplitter::handle {
-    background: #4a4a4a;
-    height: 1px;
+QComboBox::drop-down { border: none; }
+QComboBox QAbstractItemView {
+    background-color: #383838;
+    border: 1px solid #555;
+    selection-background-color: #d35400;
 }
-QSplitter::handle:hover { background: #e67e22; }
-
-QMenuBar { background-color: #222222; }
+QTextEdit#outputArea {
+    background-color: #1c1c1c;
+    border-radius: 8px;
+    border: 1px solid #333;
+    padding: 12px;
+}
+QMenuBar { background-color: #232323; }
 QMenuBar::item:selected { background-color: #4f4f4f; }
 QMenu { background-color: #3a3a3a; border: 1px solid #4a4a4a; }
 QMenu::item:selected { background-color: #d35400; }
