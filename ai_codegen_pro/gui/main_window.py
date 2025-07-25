@@ -12,8 +12,8 @@ from PySide6.QtGui import QFont, QTextCursor, QAction
 from PySide6.QtCore import Qt, QThread, Signal, Slot, QTimer
 
 from ai_codegen_pro.core.providers.openrouter_client import OpenRouterClient
+from ai_codegen_pro.core.template_service import TemplateService
 from ai_codegen_pro.utils.logger_service import log
-# Optional: SettingsManager
 try:
     from ai_codegen_pro.utils.settings_manager import SettingsManager
     SETTINGS_AVAILABLE = True
@@ -39,7 +39,6 @@ def load_settings():
             return {}
     return {}
 
-# --- Worker-Threads ---
 class ModelManager(QThread):
     models_fetched = Signal(list)
     error_occurred = Signal(str)
@@ -57,13 +56,61 @@ class ModelManager(QThread):
             self.error_occurred.emit(str(e))
 
 class CodeGenerator(QThread):
-    chunk_received = Signal(str)
-    error_occurred = Signal(str)
-    generation_finished = Signal()
 
-    def __init__(self, api_key, model, prompt, systemprompt, parent=None):
+    chunk_received = Signal(str)
+
+    error_occurred = Signal(str)
+
+    generation_finished = Signal(str)
+
+
+
+    def __init__(self, api_key, model, prompt, systemprompt, template_name, parent=None):
+
         super().__init__(parent)
-        self.api_key, self.model, self.prompt, self.systemprompt = api_key, model, prompt, systemprompt
+
+        self.api_key = api_key
+
+        self.model = model
+
+        self.prompt = prompt
+
+        self.systemprompt = systemprompt
+
+        self.template_name = template_name
+
+        self.result_buffer = ""
+
+
+
+    def run(self):
+
+        try:
+
+            client = OpenRouterClient(api_key=self.api_key, model=self.model)
+
+            for chunk in client.generate_code_streaming(prompt=self.prompt, systemprompt=self.systemprompt):
+
+                self.result_buffer += chunk
+
+                self.chunk_received.emit(chunk)
+
+            self.generation_finished.emit(self.result_buffer)
+
+        except Exception as e:
+
+            log.error(f"CodeGenerator Fehler: {e}")
+
+            self.error_occurred.emit(str(e))
+
+
+    def __init__(self, api_key, model, prompt, systemprompt, template_name, parent=None):
+        super().__init__(parent)
+        self.api_key = api_key
+        self.model = model
+        self.prompt = prompt
+        self.systemprompt = systemprompt
+        self.template_name = template_name
 
     def run(self):
         try:
@@ -75,7 +122,6 @@ class CodeGenerator(QThread):
             log.error(f"CodeGenerator Fehler: {e}")
             self.error_occurred.emit(str(e))
 
-# --- UI-Komponenten ---
 class ModernPromptSection(QFrame):
     def __init__(self, label_text, placeholder, height, parent=None):
         super().__init__(parent)
@@ -83,25 +129,21 @@ class ModernPromptSection(QFrame):
         self.setLayout(QVBoxLayout())
         self.layout().setContentsMargins(12, 8, 12, 12)
         self.layout().setSpacing(6)
-
         label = QLabel(label_text, objectName="prompt_label")
         self.text_edit = QTextEdit(placeholderText=placeholder, minimumHeight=height)
-
         self.layout().addWidget(label)
         self.layout().addWidget(self.text_edit)
 
-# --- Hauptfenster ---
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("AI CodeGen Pro")
-        self.resize(800, 850)
+        self.resize(850, 900)
         if SETTINGS_AVAILABLE:
             self.settings_mgr = SettingsManager()
             self.settings = self.settings_mgr.settings
         else:
             self.settings = load_settings()
-
         self.init_ui()
         self.connect_signals()
         QTimer.singleShot(50, self.post_init_setup)
@@ -133,11 +175,15 @@ class MainWindow(QMainWindow):
     def _create_controls_layout(self):
         layout = QHBoxLayout()
         self.model_box = QComboBox()
+        self.template_box = QComboBox()
         self.send_btn = QPushButton("Senden", objectName="send_btn")
         self.clear_btn = QPushButton("Löschen")
 
         layout.addWidget(QLabel("Modell:", objectName="prompt_label"))
         layout.addWidget(self.model_box, 1)
+        layout.addSpacing(20)
+        layout.addWidget(QLabel("Template:", objectName="prompt_label"))
+        layout.addWidget(self.template_box, 1)
         layout.addSpacing(20)
         layout.addWidget(self.send_btn)
         layout.addWidget(self.clear_btn)
@@ -154,6 +200,7 @@ class MainWindow(QMainWindow):
 
     def post_init_setup(self):
         self.load_stylesheet()
+        self.load_templates()
         api_key = self.settings.get("api_key")
         if not api_key:
             log.info("Kein API-Key gespeichert, frage Benutzer ab.")
@@ -183,6 +230,20 @@ class MainWindow(QMainWindow):
         self.model_manager.error_occurred.connect(self.on_model_load_error)
         self.model_manager.start()
 
+    def load_templates(self):
+        # Automatisch alle j2-Templates aus dem templates-Ordner laden
+        template_dir = Path(__file__).parent.parent / "templates"
+        if not template_dir.exists():
+            self.template_box.addItem("Keine Templates gefunden")
+            return
+        templates = [f.name for f in template_dir.glob("*.j2")]
+        if not templates:
+            self.template_box.addItem("Keine Templates gefunden")
+        else:
+            self.template_box.clear()
+            for tpl in templates:
+                self.template_box.addItem(tpl)
+
     @Slot(list)
     def on_models_loaded(self, models):
         self.model_box.clear()
@@ -202,9 +263,10 @@ class MainWindow(QMainWindow):
             self.model_box.currentData(),
             os.environ.get("AICODEGEN_API_KEY")
         )
-        if not all([user_prompt, model_id, api_key]):
+        template_name = self.template_box.currentText()
+        if not all([user_prompt, model_id, api_key, template_name]):
             log.warning("Fehlende Eingaben für Generierung.")
-            QMessageBox.warning(self, "Eingabe fehlt", "Bitte Prompt ausfüllen und Modell auswählen.")
+            QMessageBox.warning(self, "Eingabe fehlt", "Bitte Prompt, Modell und Template auswählen.")
             return
 
         self.send_btn.setEnabled(False)
@@ -214,10 +276,10 @@ class MainWindow(QMainWindow):
         if regel_prompt:
             full_system_prompt += f"\n\n--- REGELN ---\n{regel_prompt}"
 
-        self.generator = CodeGenerator(api_key, model_id, user_prompt, full_system_prompt, self)
+        self.generator = CodeGenerator(api_key, model_id, user_prompt, full_system_prompt, template_name, self)
         self.generator.chunk_received.connect(self.append_chunk)
         self.generator.error_occurred.connect(self.on_generation_error)
-        self.generator.generation_finished.connect(lambda: self.send_btn.setEnabled(True))
+        self.generator.generation_finished.connect(self.on_generation_finished)
         self.generator.start()
 
     @Slot(str)
@@ -256,3 +318,78 @@ def start_gui():
     window = MainWindow()
     window.show()
     sys.exit(app.exec())
+
+    def on_generation_finished(self, raw_output):
+        self.send_btn.setEnabled(True)
+        try:
+            import json
+            from ai_codegen_pro.core.template_service import TemplateService
+            context = json.loads(raw_output)
+            template_name = self.template_box.currentText()
+            tpl_service = TemplateService()
+            code = tpl_service.render(template_name, context)
+            self.output_area.setPlainText(code)
+        except Exception as e:
+            log.error(f"Fehler beim Rendern mit Template: {e}")
+            self.output_area.setHtml(f"<font color='#e74c3c'><b>Template-Fehler:</b><br>{e}</font>")
+
+from PySide6.QtWidgets import QListWidget, QStackedWidget, QFileDialog
+
+class FileViewerWidget(QWidget):
+    def __init__(self, file_dict, parent=None):
+        super().__init__(parent)
+        self.files = file_dict
+        layout = QHBoxLayout(self)
+        self.list = QListWidget()
+        self.stacked = QStackedWidget()
+        for fname, content in self.files.items():
+            self.list.addItem(fname)
+            editor = QTextEdit()
+            editor.setReadOnly(True)
+            editor.setPlainText(content)
+            self.stacked.addWidget(editor)
+        layout.addWidget(self.list, 1)
+        layout.addWidget(self.stacked, 4)
+        self.list.currentRowChanged.connect(self.stacked.setCurrentIndex)
+
+        # Export-Button
+        self.export_btn = QPushButton("Export als ZIP")
+        self.export_btn.clicked.connect(self.export_zip)
+        btn_layout = QVBoxLayout()
+        btn_layout.addWidget(self.export_btn)
+        btn_layout.addStretch()
+        layout.addLayout(btn_layout)
+
+    def export_zip(self):
+        path, _ = QFileDialog.getSaveFileName(self, "Projekt als ZIP exportieren", "projekt.zip", "ZIP Files (*.zip)")
+        if path:
+            from ai_codegen_pro.core.multi_file_codegen import export_zip
+            export_zip(self.files, path)
+
+    def on_generation_finished(self, raw_output):
+        self.send_btn.setEnabled(True)
+        try:
+            # Multi-File Parsing versuchen
+            file_dict = parse_multi_file_response(raw_output)
+            if file_dict:
+                # Multi-File-Viewer zeigen
+                viewer = FileViewerWidget(file_dict, self)
+                self.centralWidget().layout().addWidget(viewer)
+                viewer.list.setCurrentRow(0)
+                # Option: OutputArea ausblenden
+                self.output_area.hide()
+                self.file_viewer = viewer
+            else:
+                # Fallback: Single File
+                import json
+                from ai_codegen_pro.core.template_service import TemplateService
+                context = json.loads(raw_output)
+                template_name = self.template_box.currentText()
+                tpl_service = TemplateService()
+                code = tpl_service.render(template_name, context)
+                self.output_area.setPlainText(code)
+                self.output_area.show()
+        except Exception as e:
+            log.error(f"Fehler beim Rendern mit Template: {e}")
+            self.output_area.setHtml(f"<font color='#e74c3c'><b>Template-Fehler:</b><br>{e}</font>")
+            self.output_area.show()
