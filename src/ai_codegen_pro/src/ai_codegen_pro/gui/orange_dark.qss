@@ -1,0 +1,79 @@
+/* Modern Orange Dark Theme */
+QWidget {
+    background-color: #232323;
+    color: #f0f0f0;
+    font-family: 'Fira Sans', 'Segoe UI', Arial, sans-serif;
+    font-size: 11pt;
+}
+QFrame[promptFrame="true"] {
+    background-color: #2a2a2a;
+    border: 1px solid #383838;
+    border-radius: 8px;
+}
+QLabel#prompt_label {
+    color: #ff8c1a;
+    font-weight: bold;
+    font-size: 10pt;
+    padding-left: 4px;
+    margin-bottom: 2px;
+}
+QTextEdit, QPlainTextEdit {
+    background-color: #333;
+    color: #f8f8f8;
+    border-radius: 6px;
+    border: 1px solid #444;
+    padding: 8px;
+    font-family: 'Fira Mono', 'Consolas', monospace;
+    font-size: 10.5pt;
+}
+QTextEdit:focus, QPlainTextEdit:focus {
+    border: 1px solid #ff8c1a;
+    background-color: #363636;
+}
+QPushButton {
+    background-color: #383838;
+    color: #e0e0e0;
+    border-radius: 6px;
+    padding: 8px 18px;
+    border: 1px solid #555;
+    font-weight: bold;
+}
+QPushButton:hover {
+    background-color: #444;
+    border-color: #ff8c1a;
+}
+QPushButton:pressed {
+    background-color: #2a2a2a;
+}
+QPushButton#send_btn {
+    background-color: #d35400; /* Orange */
+    color: #ffffff;
+    border: none;
+}
+QPushButton#send_btn:hover {
+    background-color: #e67e22; /* Helleres Orange */
+}
+QComboBox {
+    background-color: #383838;
+    color: #f0f0f0;
+    border-radius: 6px;
+    padding: 7px 10px;
+    border: 1px solid #555;
+}
+QComboBox:focus, QComboBox:hover {
+    border: 1px solid #ff8c1a;
+}
+QComboBox::drop-down {
+    border: none;
+}
+QComboBox QAbstractItemView {
+    background-color: #383838;
+    border: 1px solid #555;
+    selection-background-color: #d35400;
+}
+QTextEdit#outputArea {
+    background-color: #1c1c1c;
+    border-radius: 8px;
+    border: 1px solid #333;
+    padding: 12px;
+}
