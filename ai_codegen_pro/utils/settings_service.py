@@ -1,23 +1,23 @@
-"""Settings Manager für persistente Konfiguration"""
+"""Settings Service für persistente Konfiguration"""
 
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Dict, Any, Optional
 
 from .logger_service import LoggerService
 
 
-class SettingsManager:
-    """Manager für persistente Anwendungseinstellungen"""
+class SettingsService:
+    """Service für persistente Anwendungseinstellungen"""
 
-    def __init__(self, config_file: Optional[str] = None):
+    def __init__(self, config_file: Optional[Path] = None):
         self.logger = LoggerService().get_logger(__name__)
 
         if config_file:
             self.config_file = Path(config_file)
         else:
             config_dir = Path.home() / ".ai_codegen_pro"
-            self.config_file = config_dir / "settings.json"
+            self.config_file = config_dir / "config.json"
 
         self.config_file.parent.mkdir(parents=True, exist_ok=True)
         self._settings = {}

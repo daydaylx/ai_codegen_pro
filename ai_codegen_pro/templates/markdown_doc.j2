@@ -1,0 +1,9 @@
+# {{ title }}
+
+{{ description }}
+
+## Funktionen
+
+{% for fn in functions %}
+- **{{ fn.name }}**: {{ fn.doc }}
+{% endfor %}

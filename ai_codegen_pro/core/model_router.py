@@ -1,35 +1,29 @@
-from ai_codegen_pro.utils.logger_service import log
-from ai_codegen_pro.core.providers.openrouter_client import OpenRouterClient
+"""Model Router for selecting optimal AI models"""
+
+from typing import List, Optional
+from ..utils.logger_service import LoggerService
+
 
 class ModelRouter:
-    """
-    Zentrale Orchestrierung für Modellaufrufe (aktuell nur OpenRouter).
-    """
+    """Routes requests to optimal AI models based on task type"""
 
-    def __init__(self, api_key, api_base=None, model_name=None):
-        self.model_name = model_name or "mistral-7b"
-        self.api_key = api_key
-        self.api_base = api_base
-        try:
-            self.client = OpenRouterClient(
-                api_key=self.api_key,
-                api_base=self.api_base,
-                model=self.model_name
-            )
-        except Exception as e:
-            log.error(f"ModelRouter-Initialisierung fehlgeschlagen: {e}")
-            raise
+    def __init__(self):
+        self.logger = LoggerService().get_logger(__name__)
+        self.model_preferences = {
+            "code_generation": ["openai/gpt-4-turbo", "anthropic/claude-3-opus"],
+            "documentation": ["openai/gpt-3.5-turbo", "anthropic/claude-3-sonnet"],
+            "refactoring": ["openai/gpt-4", "anthropic/claude-3-opus"],
+        }
 
-    def generate(self, prompt, systemprompt=None, **kwargs):
-        try:
-            return self.client.generate(prompt, systemprompt=systemprompt, **kwargs)
-        except Exception as e:
-            log.error(f"Fehler bei der Generierung: {e}")
-            raise
+    def get_optimal_model(
+        self, task_type: str, available_models: List[str]
+    ) -> Optional[str]:
+        """Select optimal model for task"""
+        preferred = self.model_preferences.get(task_type, [])
 
-    def generate_streaming(self, prompt, systemprompt=None, **kwargs):
-        try:
-            return self.client.generate_code_streaming(prompt, systemprompt=systemprompt, **kwargs)
-        except Exception as e:
-            log.error(f"Fehler beim Streaming: {e}")
-            raise
+        for model in preferred:
+            if model in available_models:
+                return model
+
+        # Fallback to first available
+        return available_models[0] if available_models else None

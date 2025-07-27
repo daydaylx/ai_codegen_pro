@@ -1,0 +1,182 @@
+import os
+import sys
+import json
+from PySide6.QtWidgets import (
+    QApplication,
+    QMainWindow,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QTextEdit,
+    QLabel,
+    QPushButton,
+    QComboBox,
+    QLineEdit,
+    QCheckBox,
+    QFileDialog,
+    QProgressBar,
+    QMessageBox,
+    QTabWidget,
+    QDoubleSpinBox,
+)
+from PySide6.QtGui import QFont, QTextCursor, QGuiApplication
+
+from ai_codegen_pro.utils.settings_manager import SettingsManager
+from ai_codegen_pro.core.multi_file_codegen import MultiFileCodeGen
+from ai_codegen_pro.core.model_router import ModelRouter
+from ai_codegen_pro.gui.model_loader_thread import ModelLoaderThread
+from ai_codegen_pro.gui.codegen_worker import CodeGenWorker
+
+import logging
+
+log = logging.getLogger(__name__)
+
+
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.settings_manager = SettingsManager()
+        self.model_router = None
+        self.multi_file_codegen = MultiFileCodeGen()
+        self.worker = None
+
+        self.setWindowTitle("AI Codegen Pro")
+        self.init_ui()
+        self.load_settings()
+        self.load_models()
+
+    def init_ui(self):
+        central_widget = QWidget()
+        layout = QVBoxLayout(central_widget)
+
+        self.model_select = QComboBox()
+        self.system_prompt_input = QTextEdit()
+        self.prompt_input = QTextEdit()
+        self.response_output = QTextEdit()
+        self.response_output.setReadOnly(True)
+        self.project_path_input = QLineEdit()
+        self.browse_button = QPushButton("📁 Pfad wählen")
+        self.theme_toggle = QCheckBox("🌗 Dunkles Theme")
+        self.reset_button = QPushButton("🧹 Reset")
+        self.copy_button = QPushButton("📋 Kopieren")
+        self.generate_button = QPushButton("⚙️ Generieren")
+        self.temp_spinner = QDoubleSpinBox()
+        self.temp_spinner.setRange(0.0, 2.0)
+        self.temp_spinner.setSingleStep(0.1)
+        self.temp_spinner.setValue(0.7)
+
+        # Tabs
+        tabs = QTabWidget()
+        input_tab = QWidget()
+        input_layout = QVBoxLayout(input_tab)
+        input_layout.addWidget(QLabel("Modellwahl:"))
+        input_layout.addWidget(self.model_select)
+        input_layout.addWidget(QLabel("System Prompt:"))
+        input_layout.addWidget(self.system_prompt_input)
+        input_layout.addWidget(QLabel("User Prompt:"))
+        input_layout.addWidget(self.prompt_input)
+        input_layout.addWidget(QLabel("Temperature:"))
+        input_layout.addWidget(self.temp_spinner)
+        input_layout.addWidget(QLabel("Projektpfad:"))
+        path_layout = QHBoxLayout()
+        path_layout.addWidget(self.project_path_input)
+        path_layout.addWidget(self.browse_button)
+        input_layout.addLayout(path_layout)
+        input_layout.addWidget(self.generate_button)
+
+        output_tab = QWidget()
+        output_layout = QVBoxLayout(output_tab)
+        output_layout.addWidget(QLabel("Antwort:"))
+        output_layout.addWidget(self.response_output)
+
+        button_layout = QHBoxLayout()
+        button_layout.addWidget(self.copy_button)
+        button_layout.addWidget(self.reset_button)
+        button_layout.addWidget(self.theme_toggle)
+        output_layout.addLayout(button_layout)
+
+        tabs.addTab(input_tab, "📝 Eingabe")
+        tabs.addTab(output_tab, "📤 Ausgabe")
+
+        layout.addWidget(tabs)
+        self.setCentralWidget(central_widget)
+
+        self.browse_button.clicked.connect(self.browse_project_path)
+        self.copy_button.clicked.connect(self.copy_output)
+        self.reset_button.clicked.connect(self.reset_fields)
+        self.theme_toggle.stateChanged.connect(self.toggle_theme)
+        self.generate_button.clicked.connect(self.start_code_generation)
+
+    def browse_project_path(self):
+        folder = QFileDialog.getExistingDirectory(self, "Projektpfad wählen")
+        if folder:
+            self.project_path_input.setText(folder)
+
+    def copy_output(self):
+        QGuiApplication.clipboard().setText(self.response_output.toPlainText())
+
+    def reset_fields(self):
+        self.prompt_input.clear()
+        self.response_output.clear()
+        self.system_prompt_input.clear()
+
+    def toggle_theme(self, state):
+        if state:
+            self.setStyleSheet("QWidget { background-color: #2b2b2b; color: white; }")
+        else:
+            self.setStyleSheet("")
+
+    def load_models(self):
+        self.model_loader = ModelLoaderThread()
+        self.model_loader.models_loaded.connect(self.on_models_loaded)
+        self.model_loader.start()
+
+    def on_models_loaded(self, models):
+        self.model_router = ModelRouter(models)
+        self.model_select.addItems(self.model_router.get_model_names())
+
+    def on_codegen_finished(self, result):
+        if isinstance(result, dict):
+            self.response_output.setPlainText(json.dumps(result, indent=2))
+            path = self.project_path_input.text()
+            if path:
+                out_path = os.path.join(path, "output.zip")
+                self.multi_file_codegen.export_zip(result, out_path)
+        else:
+            self.response_output.setPlainText(str(result))
+
+    def start_code_generation(self):
+        model_name = self.model_select.currentText()
+        prompt = self.prompt_input.toPlainText()
+        system_prompt = self.system_prompt_input.toPlainText()
+        if not model_name or not prompt:
+            QMessageBox.warning(self, "Fehler", "Bitte Modell und Prompt angeben.")
+            return
+        self.codegen_worker = CodeGenWorker(model_name, prompt, system_prompt)
+        self.codegen_worker.finished.connect(self.on_codegen_finished)
+        self.codegen_worker.start()
+
+    def save_settings(self):
+        settings = {
+            "model": self.model_select.currentText(),
+            "project_path": self.project_path_input.text(),
+            "system_prompt": self.system_prompt_input.toPlainText(),
+        }
+        self.settings_manager.save(settings)
+
+    def load_settings(self):
+        settings = self.settings_manager.load()
+        if not settings:
+            return
+        self.project_path_input.setText(settings.get("project_path", ""))
+        self.system_prompt_input.setText(settings.get("system_prompt", ""))
+        model = settings.get("model")
+        if model and self.model_select.findText(model) >= 0:
+            self.model_select.setCurrentText(model)
+
+
+def start_gui():
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    sys.exit(app.exec())

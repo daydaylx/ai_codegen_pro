@@ -1,0 +1,9 @@
+
+# Professional GUI Components
+pygments>=2.16.0
+
+# Plugin System
+importlib-util>=0.1.0
+
+# Multi-File Generation
+dataclasses-json>=0.6.0

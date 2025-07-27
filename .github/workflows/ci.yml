@@ -1,0 +1,33 @@
+name: Test and Lint
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+    - name: Install dependencies
+      run: |
+        python -m venv .venv
+        source .venv/bin/activate
+        pip install -r requirements.txt
+        pip install -e .
+        pip install black isort flake8 pytest
+    - name: Lint (Black)
+      run: black --check .
+    - name: Lint (isort)
+      run: isort --check .
+    - name: Lint (flake8)
+      run: flake8 .
+    - name: Run tests
+      run: pytest
