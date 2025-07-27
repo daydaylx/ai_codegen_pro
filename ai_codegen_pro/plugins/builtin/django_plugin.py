@@ -1,10 +1,10 @@
 """Django Plugin für AI CodeGen Pro"""
 
-from typing import Dict, Any
+from typing import Any, Dict
 
-from ..base import BasePlugin
 from ...core.template_service import TemplateService
 from ...utils.logger_service import LoggerService
+from ..base import BasePlugin
 
 
 class DjangoPlugin(BasePlugin):

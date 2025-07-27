@@ -1,6 +1,7 @@
 """Background worker for code generation"""
 
 from PySide6.QtCore import QThread, Signal
+
 from ..utils.logger_service import LoggerService
 
 

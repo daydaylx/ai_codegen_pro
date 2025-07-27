@@ -1,17 +1,18 @@
 """Code-Preview Widget mit Syntax-Highlighting"""
 
 from typing import Optional
-from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QTextEdit,
-    QLabel,
-    QComboBox,
-    QPushButton,
-)
+
 from PySide6.QtCore import Signal
 from PySide6.QtGui import QFont
+from PySide6.QtWidgets import (
+    QComboBox,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
 
 from ...utils.logger_service import LoggerService
 

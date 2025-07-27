@@ -1,7 +1,9 @@
-import pytest
 from unittest.mock import patch
-from ai_codegen_pro.core.providers.openrouter_client import OpenRouterClient
+
+import pytest
 from requests.exceptions import RequestException
+
+from ai_codegen_pro.core.providers.openrouter_client import OpenRouterClient
 
 
 @patch("requests.post")

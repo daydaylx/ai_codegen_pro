@@ -1,10 +1,10 @@
 """FastAPI Plugin für AI CodeGen Pro"""
 
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 
-from ..base import BasePlugin
 from ...core.template_service import TemplateService
 from ...utils.logger_service import LoggerService
+from ..base import BasePlugin
 
 
 class FastAPIPlugin(BasePlugin):
@@ -51,9 +51,7 @@ class FastAPIPlugin(BasePlugin):
 
         return self.template_service.render_template("fastapi_main", template_vars)
 
-    def generate_pydantic_model(
-        self, model_name: str, fields: Dict[str, str], **kwargs
-    ) -> str:
+    def generate_pydantic_model(self, model_name: str, fields: Dict[str, str], **kwargs) -> str:
         """Pydantic Model generieren"""
         template_vars = {
             "model_name": model_name,

@@ -35,25 +35,15 @@ class CLIInterface:
             help="KI-Model für Codegenerierung",
         )
 
-        parser.add_argument(
-            "--prompt", type=str, required=True, help="Prompt für Codegenerierung"
-        )
+        parser.add_argument("--prompt", type=str, required=True, help="Prompt für Codegenerierung")
 
-        parser.add_argument(
-            "--system-prompt", type=str, help="System-Prompt für das KI-Modell"
-        )
+        parser.add_argument("--system-prompt", type=str, help="System-Prompt für das KI-Modell")
 
-        parser.add_argument(
-            "--template", type=str, help="Template-Name für Codegenerierung"
-        )
+        parser.add_argument("--template", type=str, help="Template-Name für Codegenerierung")
 
-        parser.add_argument(
-            "--output", type=Path, help="Ausgabedatei für generierten Code"
-        )
+        parser.add_argument("--output", type=Path, help="Ausgabedatei für generierten Code")
 
-        parser.add_argument(
-            "--verbose", "-v", action="store_true", help="Detaillierte Ausgabe"
-        )
+        parser.add_argument("--verbose", "-v", action="store_true", help="Detaillierte Ausgabe")
 
         parser.add_argument(
             "--list-templates",

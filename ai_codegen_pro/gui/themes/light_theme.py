@@ -1,7 +1,9 @@
 """Professional Light Theme – basiert auf BaseTheme."""
 
-from typing import Dict, Any
-from PySide6.QtGui import QPalette, QColor
+from typing import Any, Dict
+
+from PySide6.QtGui import QColor, QPalette
+
 from .base_theme import BaseTheme
 
 

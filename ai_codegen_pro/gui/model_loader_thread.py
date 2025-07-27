@@ -1,6 +1,7 @@
-from PySide6.QtCore import QThread, Signal
-import time
 import logging
+import time
+
+from PySide6.QtCore import QThread, Signal
 
 log = logging.getLogger(__name__)
 

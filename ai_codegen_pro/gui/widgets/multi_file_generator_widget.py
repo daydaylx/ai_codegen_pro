@@ -1,26 +1,27 @@
 """GUI Widget for Multi-File Project Generation"""
 
-from typing import Dict, Any
-from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QFormLayout,
-    QComboBox,
-    QLineEdit,
-    QPushButton,
-    QTextEdit,
-    QLabel,
-    QGroupBox,
-    QMessageBox,
-    QTableWidget,
-    QTableWidgetItem,
-    QHeaderView,
-    QSplitter,
-    QCheckBox,
-)
+from typing import Any, Dict
+
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QFormLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QSplitter,
+    QTableWidget,
+    QTableWidgetItem,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
 
 from ...core.multi_file_generator import MultiFileGenerator
 from ...utils.logger_service import LoggerService

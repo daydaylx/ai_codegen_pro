@@ -1,7 +1,7 @@
 """Professional Status Bar mit mehreren Zonen"""
 
-from PySide6.QtWidgets import QStatusBar, QLabel, QProgressBar, QPushButton
 from PySide6.QtCore import QTimer, Signal
+from PySide6.QtWidgets import QLabel, QProgressBar, QPushButton, QStatusBar
 
 from ...utils.logger_service import LoggerService
 
@@ -45,9 +45,7 @@ class ProfessionalStatusBar(QStatusBar):
         version_label = QLabel("v1.0.0")
         self.addPermanentWidget(version_label)
 
-    def show_message(
-        self, message: str, timeout: int = 5000, style_class: str = "secondary"
-    ):
+    def show_message(self, message: str, timeout: int = 5000, style_class: str = "secondary"):
         """Show temporary message"""
         self.main_label.setText(message)
         self.main_label.setProperty("class", style_class)

@@ -1,7 +1,8 @@
 """Dark Theme für AI CodeGen Pro"""
 
+from PySide6.QtGui import QColor, QPalette
+
 from .base_theme import BaseTheme
-from PySide6.QtGui import QPalette, QColor
 
 
 class DarkTheme(BaseTheme):

@@ -1,22 +1,23 @@
 """Plugin-Manager Widget für die GUI"""
 
-from typing import Dict, Any
-from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QListWidget,
-    QListWidgetItem,
-    QPushButton,
-    QLabel,
-    QTextEdit,
-    QGroupBox,
-    QCheckBox,
-    QMessageBox,
-    QSplitter,
-)
+from typing import Any, Dict
+
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QListWidget,
+    QListWidgetItem,
+    QMessageBox,
+    QPushButton,
+    QSplitter,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
 
 from ...plugins.manager import PluginManager
 from ...utils.logger_service import LoggerService
@@ -147,9 +148,7 @@ class PluginManagerWidget(QWidget):
 
         except Exception as e:
             self.logger.error(f"Fehler beim Laden der Plugins: {e}")
-            QMessageBox.critical(
-                self, "Fehler", f"Plugins konnten nicht geladen werden:\n{e}"
-            )
+            QMessageBox.critical(self, "Fehler", f"Plugins konnten nicht geladen werden:\n{e}")
 
     def _on_plugin_selected(self, current_item, previous_item):
         """Handler für Plugin-Auswahl"""
@@ -171,9 +170,7 @@ class PluginManagerWidget(QWidget):
         """
 
         if metadata.dependencies:
-            details_html += (
-                f"<p><b>Abhängigkeiten:</b> {', '.join(metadata.dependencies)}</p>"
-            )
+            details_html += f"<p><b>Abhängigkeiten:</b> {', '.join(metadata.dependencies)}</p>"
 
         self.details_text.setHtml(details_html)
 
@@ -241,9 +238,7 @@ class PluginManagerWidget(QWidget):
 
         try:
             if self.plugin_manager.enable_plugin(plugin_id, auto_enable=auto_enable):
-                QMessageBox.information(
-                    self, "Erfolg", f"Plugin '{plugin_id}' wurde aktiviert!"
-                )
+                QMessageBox.information(self, "Erfolg", f"Plugin '{plugin_id}' wurde aktiviert!")
                 self._refresh_plugin_list()
                 self.plugins_changed.emit()
             else:
@@ -267,9 +262,7 @@ class PluginManagerWidget(QWidget):
 
         try:
             if self.plugin_manager.disable_plugin(plugin_id):
-                QMessageBox.information(
-                    self, "Erfolg", f"Plugin '{plugin_id}' wurde deaktiviert!"
-                )
+                QMessageBox.information(self, "Erfolg", f"Plugin '{plugin_id}' wurde deaktiviert!")
                 self._refresh_plugin_list()
                 self.plugins_changed.emit()
             else:

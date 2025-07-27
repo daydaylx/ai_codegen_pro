@@ -1,7 +1,8 @@
 """Base Theme Class"""
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any
+from typing import Any, Dict
+
 from PySide6.QtGui import QPalette
 
 

@@ -1,7 +1,9 @@
 """Anthropic Claude Model Plugin"""
 
 from typing import List
+
 import requests
+
 from ..base import ModelPlugin, PluginMetadata
 
 
@@ -120,7 +122,6 @@ class AnthropicModelPlugin(ModelPlugin):
             stream=True,
             timeout=120,
         ) as response:
-
             if response.status_code != 200:
                 raise Exception(f"Anthropic API Fehler: {response.text}")
 

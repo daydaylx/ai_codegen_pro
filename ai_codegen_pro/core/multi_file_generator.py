@@ -1,9 +1,9 @@
 """Enterprise Multi-File Code Generator"""
 
 import json
-from pathlib import Path
-from typing import Dict, List, Any, Optional
 from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from ..utils.logger_service import LoggerService
 
@@ -62,8 +62,7 @@ class MultiFileGenerator:
         generated_files = {}
 
         self.logger.info(
-            f"Generating {project_type} project with "
-            f"{len(project_spec.files)} files"
+            f"Generating {project_type} project with " f"{len(project_spec.files)} files"
         )
 
         for file_spec in project_spec.files:
@@ -78,9 +77,7 @@ class MultiFileGenerator:
 
         return generated_files
 
-    def _generate_file_content(
-        self, file_spec: FileSpec, variables: Dict[str, Any]
-    ) -> str:
+    def _generate_file_content(self, file_spec: FileSpec, variables: Dict[str, Any]) -> str:
         """Generate content for a single file"""
 
         content_template = f"""# {file_spec.filename}
@@ -117,15 +114,9 @@ if __name__ == "__main__":
             name="FastAPI Microservice",
             description="A complete FastAPI microservice",
             files=[
-                FileSpec(
-                    "main.py", "fastapi_main", {}, "FastAPI application entry point"
-                ),
-                FileSpec(
-                    "requirements.txt", "python_requirements", {}, "Python dependencies"
-                ),
-                FileSpec(
-                    "Dockerfile", "dockerfile", {}, "Docker container configuration"
-                ),
+                FileSpec("main.py", "fastapi_main", {}, "FastAPI application entry point"),
+                FileSpec("requirements.txt", "python_requirements", {}, "Python dependencies"),
+                FileSpec("Dockerfile", "dockerfile", {}, "Docker container configuration"),
             ],
             project_variables={"framework": "fastapi"},
         )

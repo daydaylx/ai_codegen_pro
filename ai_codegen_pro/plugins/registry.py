@@ -1,13 +1,13 @@
 """Plugin-Registry für die Verwaltung von Plugins"""
 
-from typing import Dict, List, Type, Optional, Any
-from pathlib import Path
 import importlib
 import importlib.util
 import inspect
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Type
 
-from .base import PluginBase, TemplatePlugin, ModelPlugin, PluginMetadata
 from ..utils.logger_service import LoggerService
+from .base import ModelPlugin, PluginBase, PluginMetadata, TemplatePlugin
 
 
 class PluginRegistry:
@@ -104,9 +104,7 @@ class PluginRegistry:
         """Lädt Plugin aus einem Package"""
         try:
             module_name = f"plugin_{package_path.name}"
-            spec = importlib.util.spec_from_file_location(
-                module_name, package_path / "__init__.py"
-            )
+            spec = importlib.util.spec_from_file_location(module_name, package_path / "__init__.py")
 
             if spec and spec.loader:
                 module = importlib.util.module_from_spec(spec)
@@ -115,13 +113,9 @@ class PluginRegistry:
                 self._extract_plugin_classes_from_module(module, str(package_path))
 
         except Exception as e:
-            self.logger.warning(
-                f"Konnte Plugin-Package nicht laden {package_path}: {e}"
-            )
+            self.logger.warning(f"Konnte Plugin-Package nicht laden {package_path}: {e}")
 
-    def _extract_plugin_classes_from_module(
-        self, module: Any, source_path: str
-    ) -> None:
+    def _extract_plugin_classes_from_module(self, module: Any, source_path: str) -> None:
         """Extrahiert Plugin-Klassen aus einem Modul"""
         for name, obj in inspect.getmembers(module, inspect.isclass):
             if (
@@ -130,17 +124,12 @@ class PluginRegistry:
                 and obj != TemplatePlugin
                 and obj != ModelPlugin
             ):
-
                 plugin_id = f"{module.__name__}.{name}"
                 self._plugin_classes[plugin_id] = obj
 
-                self.logger.debug(
-                    f"Plugin-Klasse gefunden: {plugin_id} in {source_path}"
-                )
+                self.logger.debug(f"Plugin-Klasse gefunden: {plugin_id} in {source_path}")
 
-    def register_plugin_class(
-        self, plugin_id: str, plugin_class: Type[PluginBase]
-    ) -> None:
+    def register_plugin_class(self, plugin_id: str, plugin_class: Type[PluginBase]) -> None:
         """
         Registriert eine Plugin-Klasse manuell
 

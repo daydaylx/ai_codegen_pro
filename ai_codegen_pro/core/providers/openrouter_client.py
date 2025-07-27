@@ -3,6 +3,7 @@ OpenRouter API Client (alternative Pfad) mit Fehlerbehandlung und Retry.
 """
 import logging
 from typing import Dict, List
+
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -35,20 +36,15 @@ class OpenRouterClient:
         session.mount("https://", adapter)
         return session
 
-    def _make_request(
-        self, endpoint: str, payload: Dict[str, object]
-    ) -> Dict[str, object]:
+    def _make_request(self, endpoint: str, payload: Dict[str, object]) -> Dict[str, object]:
         url = f"{self.BASE_URL}/{endpoint}"
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
-            "HTTP-Referer": "https://github.com/daydaylx/ai_codegen_pro",
             "X-Title": "AI CodeGen Pro",
         }
         try:
-            response = self.session.post(
-                url, json=payload, headers=headers, timeout=self.timeout
-            )
+            response = self.session.post(url, json=payload, headers=headers, timeout=self.timeout)
             response.raise_for_status()
             return response.json()
         except requests.exceptions.Timeout:
@@ -59,7 +55,8 @@ class OpenRouterClient:
             error_msg = f"HTTP {e.response.status_code}"
             try:
                 error_data = e.response.json()
-                error_msg += f": {error_data.get('error', {}).get('message', 'Unknown error')}"
+                msg = error_data.get("error", {}).get("message", "Unknown error")
+                error_msg += f": {msg}"
             except Exception:
                 pass
             raise OpenRouterError(error_msg)
@@ -73,12 +70,17 @@ class OpenRouterClient:
         max_tokens: int = 4000,
         temperature: float = 0.1,
     ) -> str:
+        system_content = (
+            "You are an expert programmer. Generate clean, "
+            "well-documented, production-ready code."
+        )
+
         payload = {
             "model": model,
             "messages": [
                 {
                     "role": "system",
-                    "content": "You are an expert programmer. Generate clean, well-documented, production-ready code.",
+                    "content": system_content,
                 },
                 {"role": "user", "content": prompt},
             ],

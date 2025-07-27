@@ -1,8 +1,9 @@
 """Theme Manager for global theme application"""
 
 from typing import Dict, Type
-from PySide6.QtWidgets import QApplication
+
 from PySide6.QtCore import QObject, Signal
+from PySide6.QtWidgets import QApplication
 
 from .base_theme import BaseTheme
 from .dark_theme import DarkTheme
