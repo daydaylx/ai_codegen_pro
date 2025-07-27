@@ -1,4 +1,4 @@
-"""Professional Light Theme"""
+"""Professional Light Theme – basiert auf BaseTheme."""
 
 from typing import Dict, Any
 from PySide6.QtGui import QPalette, QColor
@@ -6,12 +6,9 @@ from .base_theme import BaseTheme
 
 
 class LightTheme(BaseTheme):
-    """Professional light theme"""
+    name = "Professional Light"
 
-    @property
-    def name(self) -> str:
-        return "Professional Light"
-
+    # -------------------------------------------------------------
     @property
     def colors(self) -> Dict[str, str]:
         return {
@@ -28,34 +25,56 @@ class LightTheme(BaseTheme):
             "border_focus": "#0066cc",
             "primary": "#0066cc",
             "primary_hover": "#0054a3",
+            "success": "#3498db",  # Example for light theme success
+            "warning": "#f39c12",  # Example for light theme warning
+            "error": "#e74c3c",  # Example for light theme error
+            "info": "#9b59b6",  # Example for light theme info
+            "syntax_keyword": "#0000ff",  # Blue for keywords
+            "syntax_string": "#800000",  # Maroon for strings
+            "syntax_comment": "#008000",  # Green for comments
+            "syntax_number": "#800080",  # Purple for numbers
+            "syntax_function": "#000080",  # Dark Blue for functions
+            "syntax_class": "#800080",  # Purple for classes
         }
 
+    # -------------------------------------------------------------
     @property
     def fonts(self) -> Dict[str, Dict[str, Any]]:
-        return {}
+        return {
+            "main": {"family": "Segoe UI", "size": 9, "weight": "normal"},
+            "code": {
+                "family": 'Consolas, "Courier New", monospace',
+                "size": 10,
+                "weight": "normal",
+            },
+            "heading": {"family": "Segoe UI", "size": 12, "weight": "bold"},
+            "small": {"family": "Segoe UI", "size": 8, "weight": "normal"},
+        }
 
+    # -------------------------------------------------------------
     def get_stylesheet(self) -> str:
-        # Reuse dark theme structure with light colors
+        # Für Kürze reuse des Dark-Styles, nur Farben anders
         from .dark_theme import DarkTheme
 
         sheet = DarkTheme().get_stylesheet()
-
-        # Replace dark colors with light colors
-        dark_colors = DarkTheme().colors
-        for dark_key, dark_value in dark_colors.items():
-            if dark_key in self.colors:
-                sheet = sheet.replace(dark_value, self.colors[dark_key])
-
+        for k, v in DarkTheme().colors.items():
+            sheet = sheet.replace(v, self.colors.get(k, v))
         return sheet
 
+    # -------------------------------------------------------------
     def get_palette(self) -> QPalette:
-        palette = QPalette()
+        pal = QPalette()
         c = self.colors
-
-        palette.setColor(QPalette.ColorRole.Window, QColor(c["background"]))
-        palette.setColor(QPalette.ColorRole.WindowText, QColor(c["text_primary"]))
-        palette.setColor(QPalette.ColorRole.Base, QColor(c["surface"]))
-        palette.setColor(QPalette.ColorRole.Text, QColor(c["text_primary"]))
-        palette.setColor(QPalette.ColorRole.Highlight, QColor(c["primary"]))
-
-        return palette
+        pal.setColor(QPalette.ColorRole.Window, QColor(c["background"]))
+        pal.setColor(QPalette.ColorRole.WindowText, QColor(c["text_primary"]))
+        pal.setColor(QPalette.ColorRole.Base, QColor(c["surface"]))
+        pal.setColor(QPalette.ColorRole.AlternateBase, QColor(c["surface_elevated"]))
+        pal.setColor(QPalette.ColorRole.Text, QColor(c["text_primary"]))
+        pal.setColor(
+            QPalette.ColorRole.BrightText, QColor("#000000")
+        )  # Black for bright text on light
+        pal.setColor(QPalette.ColorRole.Button, QColor(c["surface_elevated"]))
+        pal.setColor(QPalette.ColorRole.ButtonText, QColor(c["text_primary"]))
+        pal.setColor(QPalette.ColorRole.Highlight, QColor(c["primary"]))
+        pal.setColor(QPalette.ColorRole.HighlightedText, QColor("#ffffff"))
+        return pal

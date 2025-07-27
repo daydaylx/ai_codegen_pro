@@ -19,7 +19,9 @@ class SettingsService:
             config_dir = Path.home() / ".ai_codegen_pro"
             self.config_file = config_dir / "config.json"
 
+        # Konfigurationsverzeichnis erstellen
         self.config_file.parent.mkdir(parents=True, exist_ok=True)
+
         self._settings = {}
         self._load_settings()
 
@@ -29,8 +31,10 @@ class SettingsService:
             if self.config_file.exists():
                 with open(self.config_file, "r", encoding="utf-8") as f:
                     self._settings = json.load(f)
+                self.logger.debug(f"Settings geladen: {len(self._settings)} Einträge")
             else:
                 self._settings = {}
+
         except Exception as e:
             self.logger.error(f"Fehler beim Laden der Settings: {e}")
             self._settings = {}
@@ -52,14 +56,11 @@ class SettingsService:
         self._settings[key] = value
         self._save_settings()
 
-    def delete(self, key: str) -> bool:
-        """Löscht einen Konfigurationswert"""
-        if key in self._settings:
-            del self._settings[key]
-            self._save_settings()
-            return True
-        return False
-
     def get_all(self) -> Dict[str, Any]:
         """Gibt alle Konfigurationswerte zurück"""
         return self._settings.copy()
+
+    def reset(self):
+        """Setzt alle Konfigurationswerte zurück"""
+        self._settings.clear()
+        self._save_settings()

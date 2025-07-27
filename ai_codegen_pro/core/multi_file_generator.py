@@ -1,5 +1,7 @@
 """Enterprise Multi-File Code Generator"""
 
+import json
+from pathlib import Path
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass, field
 
@@ -25,6 +27,7 @@ class ProjectSpec:
     description: str
     files: List[FileSpec] = field(default_factory=list)
     project_variables: Dict[str, Any] = field(default_factory=dict)
+    structure: Dict[str, Any] = field(default_factory=dict)
 
 
 class MultiFileGenerator:
@@ -38,107 +41,117 @@ class MultiFileGenerator:
         """Load pre-defined project templates"""
         return {
             "fastapi_microservice": self._get_fastapi_microservice_spec(),
+            "django_crud_app": self._get_django_crud_spec(),
             "python_package": self._get_python_package_spec(),
         }
 
-    def _get_fastapi_microservice_spec(self) -> ProjectSpec:
-        """FastAPI microservice project template"""
-        return ProjectSpec(
-            name="FastAPI Microservice",
-            description="Complete FastAPI microservice with database and tests",
-            project_variables={
-                "service_name": "MyService",
-                "database": "sqlite",
-                "authentication": True,
-                "testing": True,
-            },
-            files=[
-                FileSpec(
-                    filename="main.py",
-                    template="service_fastapi.j2",
-                    description="FastAPI application entry point",
-                    variables={"is_main": True},
-                ),
-                FileSpec(
-                    filename="models.py",
-                    template="pydantic_model.j2",
-                    description="Pydantic models",
-                    dependencies=[],
-                ),
-                FileSpec(
-                    filename="requirements.txt",
-                    template="",
-                    description="Python dependencies",
-                ),
-                FileSpec(
-                    filename="README.md",
-                    template="markdown_doc.j2",
-                    description="Project documentation",
-                ),
-            ],
-        )
-
-    def _get_python_package_spec(self) -> ProjectSpec:
-        """Python package template"""
-        return ProjectSpec(
-            name="Python Package",
-            description="Complete Python package with tests",
-            project_variables={
-                "package_name": "mypackage",
-                "author": "Developer",
-                "version": "0.1.0",
-            },
-            files=[
-                FileSpec(
-                    filename="__init__.py",
-                    template="python_module.j2",
-                    description="Package initialization",
-                ),
-                FileSpec(
-                    filename="core.py",
-                    template="python_module.j2",
-                    description="Core functionality",
-                ),
-                FileSpec(
-                    filename="test_core.py",
-                    template="test.j2",
-                    description="Tests",
-                    dependencies=["core.py"],
-                ),
-                FileSpec(
-                    filename="README.md",
-                    template="markdown_doc.j2",
-                    description="Documentation",
-                ),
-            ],
-        )
-
-    def list_project_types(self) -> List[str]:
-        """Get available project types"""
-        return list(self.project_templates.keys())
-
-    def get_project_info(self, project_type: str) -> Optional[ProjectSpec]:
-        """Get information about a project type"""
-        return self.project_templates.get(project_type)
-
-    def generate_project_structure(
-        self, project_type: str, variables: Dict[str, Any]
+    def generate_project(
+        self,
+        project_type: str,
+        project_variables: Dict[str, Any],
+        output_path: Optional[Path] = None,
     ) -> Dict[str, str]:
-        """Generate project file structure"""
+        """Generate complete project with multiple files"""
+
         if project_type not in self.project_templates:
             raise ValueError(f"Unknown project type: {project_type}")
 
-        spec = self.project_templates[project_type]
-        result = {}
+        project_spec = self.project_templates[project_type]
+        merged_vars = {**project_spec.project_variables, **project_variables}
 
-        # Simple file generation
-        for file_spec in spec.files:
-            content = f"""# {file_spec.description}
-# Generated for project: {variables.get('service_name', 'MyProject')}
-# Template: {file_spec.template}
+        generated_files = {}
 
-# TODO: Implement {file_spec.filename}
+        self.logger.info(
+            f"Generating {project_type} project with "
+            f"{len(project_spec.files)} files"
+        )
+
+        for file_spec in project_spec.files:
+            self.logger.debug(f"Generating file: {file_spec.filename}")
+
+            file_vars = {**merged_vars, **file_spec.variables}
+            content = self._generate_file_content(file_spec, file_vars)
+            generated_files[file_spec.filename] = content
+
+        if output_path:
+            self._write_project_files(output_path, generated_files)
+
+        return generated_files
+
+    def _generate_file_content(
+        self, file_spec: FileSpec, variables: Dict[str, Any]
+    ) -> str:
+        """Generate content for a single file"""
+
+        content_template = f"""# {file_spec.filename}
+# Generated by AI CodeGen Pro
+# Description: {file_spec.description}
+
+# Project Variables: {json.dumps(variables, indent=2)}
+
+def main():
+    '''Main function for {file_spec.filename}'''
+    pass
+
+if __name__ == "__main__":
+    main()
 """
-            result[file_spec.filename] = content
+        return content_template.strip()
 
-        return result
+    def _write_project_files(self, output_path: Path, generated_files: Dict[str, str]):
+        """Write generated files to disk"""
+        output_path.mkdir(parents=True, exist_ok=True)
+
+        for filename, content in generated_files.items():
+            file_path = output_path / filename
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(content)
+
+            self.logger.debug(f"Written file: {file_path}")
+
+    def _get_fastapi_microservice_spec(self) -> ProjectSpec:
+        """Get FastAPI microservice project specification"""
+        return ProjectSpec(
+            name="FastAPI Microservice",
+            description="A complete FastAPI microservice",
+            files=[
+                FileSpec(
+                    "main.py", "fastapi_main", {}, "FastAPI application entry point"
+                ),
+                FileSpec(
+                    "requirements.txt", "python_requirements", {}, "Python dependencies"
+                ),
+                FileSpec(
+                    "Dockerfile", "dockerfile", {}, "Docker container configuration"
+                ),
+            ],
+            project_variables={"framework": "fastapi"},
+        )
+
+    def _get_django_crud_spec(self) -> ProjectSpec:
+        """Get Django CRUD project specification"""
+        return ProjectSpec(
+            name="Django CRUD App",
+            description="A Django application with CRUD operations",
+            files=[
+                FileSpec("models.py", "django_models", {}, "Django data models"),
+                FileSpec("views.py", "django_views", {}, "Django view functions"),
+                FileSpec("urls.py", "django_urls", {}, "Django URL routing"),
+            ],
+            project_variables={"framework": "django"},
+        )
+
+    def _get_python_package_spec(self) -> ProjectSpec:
+        """Get Python package project specification"""
+        return ProjectSpec(
+            name="Python Package",
+            description="A complete Python package structure",
+            files=[
+                FileSpec("__init__.py", "python_init", {}, "Package initialization"),
+                FileSpec("setup.py", "python_setup", {}, "Package setup configuration"),
+                FileSpec("README.md", "readme", {}, "Package documentation"),
+            ],
+            project_variables={"type": "package"},
+        )

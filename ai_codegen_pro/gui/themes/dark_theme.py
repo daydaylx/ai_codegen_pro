@@ -1,169 +1,252 @@
-"""Professional Dark Theme - VS Code inspired"""
+"""Dark Theme für AI CodeGen Pro"""
 
-from typing import Dict, Any
-from PySide6.QtGui import QPalette, QColor
 from .base_theme import BaseTheme
+from PySide6.QtGui import QPalette, QColor
 
 
 class DarkTheme(BaseTheme):
-    """Professional dark theme inspired by VS Code Dark"""
+    """Professionelles dunkles Theme"""
 
     @property
     def name(self) -> str:
-        return "Professional Dark"
+        return "dark"
 
     @property
-    def colors(self) -> Dict[str, str]:
+    def colors(self):
         return {
-            # Main Colors
-            "background": "#1e1e1e",
-            "surface": "#252526",
-            "surface_elevated": "#2d2d30",
-            "surface_hover": "#3e3e42",
-            "surface_active": "#094771",
-            # Text Colors
-            "text_primary": "#cccccc",
-            "text_secondary": "#969696",
-            "text_disabled": "#656565",
-            "text_accent": "#007acc",
-            # Border Colors
-            "border": "#3c3c3c",
-            "border_focus": "#007acc",
-            "border_error": "#f14c4c",
-            "border_success": "#89d185",
-            # Status Colors
-            "primary": "#007acc",
-            "primary_hover": "#1177bb",
-            "success": "#89d185",
-            "warning": "#ffcc02",
-            "error": "#f14c4c",
-            "info": "#75beff",
+            "primary": "#2D2D2D",
+            "secondary": "#3D3D3D",
+            "accent": "#4A9EFF",
+            "success": "#28A745",
+            "warning": "#FFC107",
+            "error": "#DC3545",
+            "text": "#FFFFFF",
+            "text_secondary": "#CCCCCC",
+            "background": "#1E1E1E",
+            "background_light": "#2D2D2D",
+            "border": "#4A9EFF",
         }
 
     @property
-    def fonts(self) -> Dict[str, Dict[str, Any]]:
+    def fonts(self):
         return {
-            "main": {"family": "Segoe UI", "size": 9, "weight": "normal"},
-            "code": {
-                "family": 'Consolas, "Courier New", monospace',
-                "size": 10,
-                "weight": "normal",
-            },
-            "heading": {"family": "Segoe UI", "size": 12, "weight": "bold"},
+            "default": {"family": "Arial", "size": 10},
+            "heading": {"family": "Arial", "size": 12, "weight": "bold"},
+            "code": {"family": "Consolas", "size": 10},
         }
 
     def get_stylesheet(self) -> str:
-        c = self.colors
-        return f"""
-        QMainWindow {{
-            background-color: {c['background']};
-            color: {c['text_primary']};
-        }}
+        """Dark Theme Stylesheet - flake8 kompatibel"""
+        return """
+/* === MAIN WINDOW === */
+QMainWindow {
+    background-color: #1E1E1E;
+    color: #FFFFFF;
+    font-family: Arial;
+    font-size: 10pt;
+}
 
-        QWidget {{
-            background-color: {c['background']};
-            color: {c['text_primary']};
-            font-family: Segoe UI;
-            font-size: 9pt;
-        }}
+/* === BUTTONS === */
+QPushButton {
+    background-color: #3D3D3D;
+    color: #FFFFFF;
+    border: 1px solid #4A9EFF;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: bold;
+}
 
-        QGroupBox {{
-            font-weight: bold;
-            font-size: 10pt;
-            border: 2px solid {c['border']};
-            border-radius: 8px;
-            margin-top: 12px;
-            padding-top: 8px;
-            background-color: {c['surface']};
-        }}
+QPushButton:hover {
+    background-color: #4A9EFF;
+    border-color: #4A9EFF;
+}
 
-        QGroupBox::title {{
-            subcontrol-origin: margin;
-            left: 12px;
-            padding: 0 8px 0 8px;
-            color: {c['text_accent']};
-            background-color: {c['surface']};
-        }}
+QPushButton:pressed {
+    background-color: #2D2D2D;
+}
 
-        QPushButton {{
-            background-color: {c['surface_elevated']};
-            border: 1px solid {c['border']};
-            border-radius: 6px;
-            padding: 8px 16px;
-            font-weight: 500;
-            color: {c['text_primary']};
-            min-height: 20px;
-        }}
+QPushButton[class="primary"] {
+    background-color: #4A9EFF;
+    border-color: #4A9EFF;
+}
 
-        QPushButton:hover {{
-            background-color: {c['surface_hover']};
-            border-color: {c['border_focus']};
-        }}
+QPushButton[class="success"] {
+    background-color: #28A745;
+    border-color: #28A745;
+}
 
-        QPushButton[class="primary"] {{
-            background-color: {c['primary']};
-            border-color: {c['primary']};
-            color: white;
-            font-weight: 600;
-        }}
+/* === TEXT INPUTS === */
+QTextEdit, QLineEdit {
+    background-color: #2D2D2D;
+    color: #FFFFFF;
+    border: 1px solid #4A9EFF;
+    padding: 8px;
+    border-radius: 4px;
+    selection-background-color: #4A9EFF;
+}
 
-        QPushButton[class="primary"]:hover {{
-            background-color: {c['primary_hover']};
-        }}
+QTextEdit:focus, QLineEdit:focus {
+    border-color: #4A9EFF;
+    border-width: 2px;
+}
 
-        QLineEdit, QTextEdit, QPlainTextEdit {{
-            background-color: {c['surface']};
-            border: 1px solid {c['border']};
-            border-radius: 4px;
-            padding: 8px;
-            color: {c['text_primary']};
-            selection-background-color: {c['surface_active']};
-        }}
+/* === COMBO BOXES === */
+QComboBox {
+    background-color: #2D2D2D;
+    color: #FFFFFF;
+    border: 1px solid #4A9EFF;
+    padding: 6px 12px;
+    border-radius: 4px;
+}
 
-        QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus {{
-            border-color: {c['border_focus']};
-        }}
+/* === GROUP BOXES === */
+QGroupBox {
+    background-color: #2D2D2D;
+    border: 2px solid #4A9EFF;
+    border-radius: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    font-weight: bold;
+}
 
-        QComboBox {{
-            background-color: {c['surface']};
-            border: 1px solid {c['border']};
-            border-radius: 4px;
-            padding: 6px 12px;
-            color: {c['text_primary']};
-        }}
+QGroupBox::title {
+    color: #FFFFFF;
+    subcontrol-origin: margin;
+    left: 12px;
+    padding: 0 8px 0 8px;
+}
 
-        QTabWidget::pane {{
-            border: 1px solid {c['border']};
-            border-radius: 6px;
-            background-color: {c['surface']};
-        }}
+/* === TABS === */
+QTabWidget::pane {
+    border: 1px solid #4A9EFF;
+    background-color: #2D2D2D;
+}
 
-        QTabBar::tab {{
-            background-color: {c['surface_elevated']};
-            border: 1px solid {c['border']};
-            border-bottom: none;
-            padding: 10px 20px;
-            margin-right: 2px;
-            color: {c['text_secondary']};
-            border-top-left-radius: 6px;
-            border-top-right-radius: 6px;
-        }}
+QTabBar::tab {
+    background-color: #3D3D3D;
+    color: #FFFFFF;
+    padding: 8px 16px;
+    margin-right: 2px;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+}
 
-        QTabBar::tab:selected {{
-            background-color: {c['surface']};
-            color: {c['text_primary']};
-            border-bottom: 2px solid {c['primary']};
-        }}
-        """
+QTabBar::tab:selected {
+    background-color: #4A9EFF;
+    color: white;
+}
+
+QTabBar::tab:hover {
+    background-color: #2D2D2D;
+}
+
+/* === STATUS BAR === */
+QStatusBar {
+    background-color: #3D3D3D;
+    color: #FFFFFF;
+    border-top: 1px solid #4A9EFF;
+}
+
+QStatusBar QLabel {
+    color: #FFFFFF;
+    padding: 4px 8px;
+}
+
+QStatusBar QLabel[class="success"] {
+    color: #28A745;
+}
+
+QStatusBar QLabel[class="warning"] {
+    color: #FFC107;
+}
+
+QStatusBar QLabel[class="error"] {
+    color: #DC3545;
+}
+
+/* === PROGRESS BAR === */
+QProgressBar {
+    background-color: #2D2D2D;
+    border: 1px solid #4A9EFF;
+    border-radius: 8px;
+    text-align: center;
+}
+
+QProgressBar::chunk {
+    background-color: #4A9EFF;
+    border-radius: 6px;
+}
+
+/* === CHECKBOXES === */
+QCheckBox {
+    color: #FFFFFF;
+    spacing: 8px;
+}
+
+QCheckBox::indicator {
+    width: 16px;
+    height: 16px;
+    border: 1px solid #4A9EFF;
+    border-radius: 3px;
+    background-color: #2D2D2D;
+}
+
+QCheckBox::indicator:checked {
+    background-color: #4A9EFF;
+    border-color: #4A9EFF;
+}
+
+/* === LABELS === */
+QLabel {
+    color: #FFFFFF;
+}
+
+QLabel[class="heading"] {
+    font-weight: bold;
+    font-size: 12pt;
+    color: #4A9EFF;
+}
+
+QLabel[class="secondary"] {
+    color: #CCCCCC;
+}
+
+/* === SCROLLBARS === */
+QScrollBar:vertical {
+    background-color: #3D3D3D;
+    width: 12px;
+    border-radius: 6px;
+}
+
+QScrollBar::handle:vertical {
+    background-color: #4A9EFF;
+    border-radius: 6px;
+    min-height: 20px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background-color: #4A9EFF;
+}
+"""
 
     def get_palette(self) -> QPalette:
+        """Qt Palette für das Dark Theme"""
         palette = QPalette()
-        c = self.colors
 
-        palette.setColor(QPalette.ColorRole.Window, QColor(c["background"]))
-        palette.setColor(QPalette.ColorRole.WindowText, QColor(c["text_primary"]))
-        palette.setColor(QPalette.ColorRole.Base, QColor(c["surface"]))
-        palette.setColor(QPalette.ColorRole.Text, QColor(c["text_primary"]))
-        palette.setColor(QPalette.ColorRole.Highlight, QColor(c["surface_active"]))
+        # Window colors
+        palette.setColor(QPalette.ColorRole.Window, QColor(30, 30, 30))
+        palette.setColor(QPalette.ColorRole.WindowText, QColor(255, 255, 255))
+
+        # Base colors (for input fields)
+        palette.setColor(QPalette.ColorRole.Base, QColor(45, 45, 45))
+        palette.setColor(QPalette.ColorRole.Text, QColor(255, 255, 255))
+
+        # Button colors
+        palette.setColor(QPalette.ColorRole.Button, QColor(61, 61, 61))
+        palette.setColor(QPalette.ColorRole.ButtonText, QColor(255, 255, 255))
+
+        # Highlight colors
+        palette.setColor(QPalette.ColorRole.Highlight, QColor(74, 158, 255))
+        palette.setColor(QPalette.ColorRole.HighlightedText, QColor(255, 255, 255))
 
         return palette

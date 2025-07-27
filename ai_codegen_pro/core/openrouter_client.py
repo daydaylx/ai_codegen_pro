@@ -28,7 +28,9 @@ class OpenRouterClient:
         temperature: float = 0.7,
         max_tokens: int = 2048,
     ) -> str:
-        """Generiert Code mit dem angegebenen Modell"""
+        """
+        Generiert Code mit dem angegebenen Modell
+        """
         messages = []
 
         if system_prompt:
@@ -53,20 +55,20 @@ class OpenRouterClient:
                 return result["choices"][0]["message"]["content"]
             else:
                 error_msg = f"API Error: {response.status_code} - {response.text}"
+                self.logger.error(error_msg)
                 raise Exception(error_msg)
 
         except Exception as e:
-            self.logger.error(f"Code generation failed: {e}")
+            self.logger.error(f"OpenRouter API error: {e}")
             raise Exception(f"Code generation failed: {e}")
 
     def list_models(self) -> list:
-        """Liste verfügbare Modelle auf"""
+        """List available models"""
         try:
             response = self.session.get(f"{self.base_url}/models")
             if response.status_code == 200:
                 return response.json().get("data", [])
-            else:
-                return []
+            return []
         except Exception as e:
             self.logger.error(f"Failed to list models: {e}")
             return []
