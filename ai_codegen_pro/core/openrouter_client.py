@@ -1,74 +1,134 @@
-"""OpenRouter API Client für KI-basierte Codegenerierung"""
-
+"""
+OpenRouter API Client with proper error handling and retry logic.
+"""
+import logging
+from typing import Dict, List
 import requests
-from ..utils.logger_service import LoggerService
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+logger = logging.getLogger(__name__)
+
+
+class OpenRouterError(Exception):
+    """Custom exception for OpenRouter API errors."""
+    pass
 
 
 class OpenRouterClient:
-    """Client für die OpenRouter API"""
+    """Production-ready OpenRouter API client."""
 
-    def __init__(self, api_key: str, base_url: str = "https://openrouter.ai/api/v1"):
+    BASE_URL = "https://openrouter.ai/api/v1"
+
+    def __init__(self, api_key: str, timeout: int = 30):
         self.api_key = api_key
-        self.base_url = base_url
-        self.logger = LoggerService().get_logger(__name__)
+        self.timeout = timeout
+        self.session = self._create_session()
 
-        self.session = requests.Session()
-        self.session.headers.update(
-            {
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            }
+    def _create_session(self) -> requests.Session:
+        """Create session with retry strategy."""
+        session = requests.Session()
+
+        retry_strategy = Retry(
+            total=3,
+            status_forcelist=[429, 500, 502, 503, 504],
+            allowed_methods=["HEAD", "GET", "POST"],
+            backoff_factor=1,
         )
 
-    def generate_code(
-        self,
-        model: str,
-        prompt: str,
-        system_prompt: str = None,
-        temperature: float = 0.7,
-        max_tokens: int = 2048,
-    ) -> str:
-        """
-        Generiert Code mit dem angegebenen Modell
-        """
-        messages = []
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
 
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
+        return session
 
-        messages.append({"role": "user", "content": prompt})
-
-        data = {
-            "model": model,
-            "messages": messages,
-            "temperature": temperature,
-            "max_tokens": max_tokens,
+    def _make_request(
+        self, endpoint: str, payload: Dict[str, object]
+    ) -> Dict[str, object]:
+        """Make authenticated request with error handling."""
+        url = f"{self.BASE_URL}/{endpoint}"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://github.com/daydaylx/ai_codegen_pro",
+            "X-Title": "AI CodeGen Pro",
         }
 
         try:
             response = self.session.post(
-                f"{self.base_url}/chat/completions", json=data, timeout=60
+                url,
+                json=payload,
+                headers=headers,
+                timeout=self.timeout,
             )
+            response.raise_for_status()
+            return response.json()
 
-            if response.status_code == 200:
-                result = response.json()
-                return result["choices"][0]["message"]["content"]
-            else:
-                error_msg = f"API Error: {response.status_code} - {response.text}"
-                self.logger.error(error_msg)
-                raise Exception(error_msg)
+        except requests.exceptions.Timeout:
+            raise OpenRouterError("Request timed out")
+        except requests.exceptions.ConnectionError:
+            raise OpenRouterError("Connection error")
+        except requests.exceptions.HTTPError as e:
+            error_msg = f"HTTP {e.response.status_code}"
+            try:
+                error_data = e.response.json()
+                error_msg += f": {error_data.get('error', {}).get('message', 'Unknown error')}"
+            except Exception:
+                pass
+            raise OpenRouterError(error_msg)
+        except Exception as exc:
+            raise OpenRouterError(f"Unexpected error: {str(exc)}")
 
-        except Exception as e:
-            self.logger.error(f"OpenRouter API error: {e}")
-            raise Exception(f"Code generation failed: {e}")
+    def generate_code(
+        self,
+        prompt: str,
+        model: str = "anthropic/claude-3-sonnet-20240229",
+        max_tokens: int = 4000,
+        temperature: float = 0.1,
+    ) -> str:
+        """Generate code using specified model."""
+        payload = {
+            "model": model,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "You are an expert programmer. Generate clean, well-documented, production-ready code.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "stream": False,
+        }
 
-    def list_models(self) -> list:
-        """List available models"""
+        logger.info(f"Generating code with model: {model}")
+        response = self._make_request("chat/completions", payload)
+
         try:
-            response = self.session.get(f"{self.base_url}/models")
-            if response.status_code == 200:
-                return response.json().get("data", [])
+            generated_code = response["choices"][0]["message"]["content"]
+            logger.info(f"Generated {len(generated_code)} characters of code")
+            return generated_code
+        except (KeyError, IndexError) as e:
+            raise OpenRouterError(f"Invalid response format: {e}")
+
+    def get_available_models(self) -> List[Dict[str, object]]:
+        """Get list of available models."""
+        try:
+            response = self.session.get(
+                f"{self.BASE_URL}/models",
+                headers={"Authorization": f"Bearer {self.api_key}"},
+                timeout=self.timeout,
+            )
+            response.raise_for_status()
+            return response.json().get("data", [])
+        except Exception as exc:
+            logger.error(f"Failed to fetch models: {exc}")
             return []
-        except Exception as e:
-            self.logger.error(f"Failed to list models: {e}")
-            return []
+
+    def check_connection(self) -> bool:
+        """Test API connectivity."""
+        try:
+            self.get_available_models()
+            return True
+        except Exception:
+            return False

@@ -1,65 +1,25 @@
-"""Settings Manager für persistente Konfiguration"""
-
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional
-
-from .logger_service import LoggerService
 
 
 class SettingsManager:
-    """Manager für persistente Anwendungseinstellungen"""
+    def __init__(self, path=None):
+        self.config_path = Path(path or "~/.ai_codegen_pro.json").expanduser()
+        self._cfg = self.load()
 
-    def __init__(self, config_file: Optional[str] = None):
-        self.logger = LoggerService().get_logger(__name__)
+    def load(self):
+        if self.config_path.exists():
+            with open(self.config_path, "r") as f:
+                return json.load(f)
+        return {}
 
-        if config_file:
-            self.config_file = Path(config_file)
-        else:
-            config_dir = Path.home() / ".ai_codegen_pro"
-            self.config_file = config_dir / "settings.json"
+    def save(self):
+        with open(self.config_path, "w") as f:
+            json.dump(self._cfg, f, indent=2)
 
-        self.config_file.parent.mkdir(parents=True, exist_ok=True)
-        self._settings = {}
-        self._load_settings()
+    def get(self, key, default=None):
+        return self._cfg.get(key, default)
 
-    def _load_settings(self):
-        """Lädt Settings aus der Konfigurationsdatei"""
-        try:
-            if self.config_file.exists():
-                with open(self.config_file, "r", encoding="utf-8") as f:
-                    self._settings = json.load(f)
-            else:
-                self._settings = {}
-        except Exception as e:
-            self.logger.error(f"Fehler beim Laden der Settings: {e}")
-            self._settings = {}
-
-    def _save_settings(self):
-        """Speichert Settings in die Konfigurationsdatei"""
-        try:
-            with open(self.config_file, "w", encoding="utf-8") as f:
-                json.dump(self._settings, f, indent=2, ensure_ascii=False)
-        except Exception as e:
-            self.logger.error(f"Fehler beim Speichern der Settings: {e}")
-
-    def get(self, key: str, default: Any = None) -> Any:
-        """Gibt einen Konfigurationswert zurück"""
-        return self._settings.get(key, default)
-
-    def set(self, key: str, value: Any):
-        """Setzt einen Konfigurationswert"""
-        self._settings[key] = value
-        self._save_settings()
-
-    def delete(self, key: str) -> bool:
-        """Löscht einen Konfigurationswert"""
-        if key in self._settings:
-            del self._settings[key]
-            self._save_settings()
-            return True
-        return False
-
-    def get_all(self) -> Dict[str, Any]:
-        """Gibt alle Konfigurationswerte zurück"""
-        return self._settings.copy()
+    def set(self, key, value):
+        self._cfg[key] = value
+        self.save()

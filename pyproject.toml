@@ -17,3 +17,11 @@ dependencies = [
 [tool.setuptools]
 packages = ["ai_codegen_pro", "ai_codegen_pro.core", "ai_codegen_pro.core.providers", "ai_codegen_pro.gui", "ai_codegen_pro.tests", "ai_codegen_pro.utils", "ai_codegen_pro.templates"]
 include-package-data = true
+
+[tool.black]
+line-length = 100
+
+[tool.flake8]
+max-line-length = 100
+ignore = ["E203", "W503"]
+exclude = [".git", "__pycache__", ".venv", "*.egg-info"]

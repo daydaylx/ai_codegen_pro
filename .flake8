@@ -1,3 +1,12 @@
 [flake8]
-max-line-length = 88
-ignore = E402, F401, F541
+max-line-length = 100
+exclude = 
+    .git,
+    __pycache__,
+    .venv,
+    *.egg-info,
+    build,
+    dist
+ignore = 
+    E203,
+    W503

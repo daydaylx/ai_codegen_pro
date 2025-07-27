@@ -1,52 +1,48 @@
-"""Tests für Multi-File Code Generation"""
+"""
+Unit tests for multi-file code generator.
+"""
+
+from unittest.mock import patch
 
 import pytest
 
-from ..core.multi_file_generator import MultiFileGenerator, ProjectSpec
+from ai_codegen_pro.core.multi_file_codegen import GeneratedFile, MultiFileCodeGenerator
 
 
-class TestMultiFileGenerator:
-    """Test-Suite für MultiFileGenerator"""
+class TestMultiFileCodeGenerator:
+    @pytest.fixture
+    def generator(self):
+        with patch("ai_codegen_pro.core.multi_file_codegen.OpenRouterClient"):
+            return MultiFileCodeGenerator("test-api-key")
 
-    def test_init(self):
-        """Test Generator-Initialisierung"""
-        generator = MultiFileGenerator()
-        assert generator is not None
-        assert hasattr(generator, "project_templates")
+    def test_generate_component_success(self, generator):
+        generator.openrouter.generate_code.return_value = "def test():\n    pass"
+        generator.model_router.select_model.return_value = "test-model"
 
-    def test_list_project_types(self):
-        """Test Auflistung verfügbarer Projekt-Typen"""
-        generator = MultiFileGenerator()
-        types = generator.list_project_types()
+        component = {
+            "type": "module",
+            "name": "test_module",
+            "description": "Test module",
+        }
+        project_spec = {"type": "python"}
 
-        assert isinstance(types, list)
-        assert len(types) > 0
-        assert "fastapi_microservice" in types
+        result = generator._generate_component(component, project_spec)
+        assert isinstance(result, GeneratedFile)
+        assert result.name == "test_module.py"
+        if result:
+            assert "def test():" in result.content
 
-    def test_get_project_info(self):
-        """Test Abrufen von Projekt-Informationen"""
-        generator = MultiFileGenerator()
-        info = generator.get_project_info("fastapi_microservice")
+    def test_generate_project_success(self, generator):
+        generator.openrouter.generate_code.return_value = "# Generated code"
+        generator.model_router.select_model.return_value = "test-model"
 
-        assert isinstance(info, ProjectSpec)
-        assert info.name == "FastAPI Microservice"
-        assert len(info.files) > 0
+        project_spec = {
+            "type": "python",
+            "name": "test_project",
+            "components": [{"type": "module", "name": "main", "description": "Main module"}],
+        }
 
-    def test_generate_project_structure(self):
-        """Test Projekt-Struktur-Generierung"""
-        generator = MultiFileGenerator()
-        variables = {"service_name": "TestService"}
-
-        files = generator.generate_project_structure("fastapi_microservice", variables)
-
-        assert isinstance(files, dict)
-        assert len(files) > 0
-        assert "main.py" in files
-        assert "TestService" in files["main.py"]
-
-    def test_invalid_project_type(self):
-        """Test ungültiger Projekt-Typ"""
-        generator = MultiFileGenerator()
-
-        with pytest.raises(ValueError):
-            generator.generate_project_structure("invalid_type", {})
+        result = generator.generate_project(project_spec)
+        assert result.success
+        assert len(result.files) == 1
+        assert result.files[0].name == "main.py"

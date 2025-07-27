@@ -1,62 +1,27 @@
-"""Plugin Manager für AI CodeGen Pro"""
+from typing import Dict, Type
 
-from typing import Dict
-from pathlib import Path
-import importlib
-import inspect
-
-from .base import BasePlugin
-from ..utils.logger_service import LoggerService
+from ai_codegen_pro.plugins.base import CodeGenPlugin, PluginRegistry
 
 
 class PluginManager:
-    """Manager für Plugin-System"""
+    def __init__(self, app_reference):
+        self.registry = PluginRegistry()
+        self.app = app_reference
 
-    def __init__(self):
-        self.logger = LoggerService().get_logger(__name__)
-        self.plugins: Dict[str, BasePlugin] = {}
-        self.plugin_registry = {}
+    def load_plugin(self, name: str, plugin_cls: Type[CodeGenPlugin]):
+        if name in self.registry._plugins:
+            raise RuntimeError(f"Plugin {name} bereits geladen.")
+        self.registry.register(name, plugin_cls, self.app)
+        print(f"Plugin {name} geladen.")
 
-    def load_plugin(self, plugin_path: Path) -> bool:
-        """Plugin laden und registrieren"""
-        try:
-            module_name = plugin_path.stem
-            spec = importlib.util.spec_from_file_location(module_name, plugin_path)
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
+    def unload_plugin(self, name: str):
+        if name not in self.registry._plugins:
+            raise RuntimeError(f"Plugin {name} nicht gefunden.")
+        self.registry.unregister(name)
+        print(f"Plugin {name} entladen.")
 
-            # Plugin-Klassen finden
-            for name, obj in inspect.getmembers(module):
-                if (
-                    inspect.isclass(obj)
-                    and issubclass(obj, BasePlugin)
-                    and obj != BasePlugin
-                ):
+    def list_plugins(self) -> Dict[str, CodeGenPlugin]:
+        return dict(self.registry._plugins)
 
-                    plugin_instance = obj()
-                    if plugin_instance.initialize():
-                        self.plugins[module_name] = plugin_instance
-                        self.logger.info("Plugin loaded successfully")
-                        return True
-
-            return False
-
-        except Exception as e:
-            self.logger.error(f"Plugin load failed: {e}")
-            return False
-
-    def get_plugin(self, name: str) -> BasePlugin:
-        """Plugin abrufen"""
-        return self.plugins.get(name)
-
-    def list_plugins(self) -> Dict[str, BasePlugin]:
-        """Alle Plugins auflisten"""
-        return self.plugins.copy()
-
-    def unload_plugin(self, name: str) -> bool:
-        """Plugin entladen"""
-        if name in self.plugins:
-            del self.plugins[name]
-            self.logger.info(f"Plugin {name} unloaded")
-            return True
-        return False
+    def trigger_post_generate(self, files, generation_result):
+        self.registry.run_post_generate(files, generation_result)
